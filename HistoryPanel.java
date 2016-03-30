@@ -1,3 +1,9 @@
+/**
+ * Visitation History Panel for RD
+ * Date: 03/11/16
+ * @author Brandon Ballard & Hanif Mirza
+ *
+ */
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
