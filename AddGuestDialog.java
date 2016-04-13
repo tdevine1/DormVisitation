@@ -49,17 +49,19 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 	String						residentRoomNo, residentName, residentID, guestName, guestIDtype, guestAge, overnightStatus, currTime, currDate, myVisitationID;
 	DateFormat 					dateFormat, timeFormat;
 	Hashtable<String,Resident> 	residentHT;
+	int row;
 
 	public AddGuestDialog(DefaultGUI urDefaultGUI,Hashtable<String,Resident> urHashtable,Statement urStatement) //FOR ADDING A GUEST
 	{
 		this.myStatement = urStatement;
 		this.residentHT = urHashtable;
 		this.myDefaultGUI = urDefaultGUI;
+		this.row = row;
 
 		dateFormat = new SimpleDateFormat("MM/dd/yyyy");
 		timeFormat = new SimpleDateFormat("hh:mma");
 
-		addButton = new JButton("Add");
+		addButton = new JButton("Add Guest");
 		addButton.setBackground(Color.WHITE);
 		addButton.addActionListener(this);
 		addButton.setActionCommand("ADD");
@@ -87,17 +89,18 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 		setupMainFrame();
 	}
 
-	public AddGuestDialog(DefaultGUI urDefaultGUI,Hashtable<String,Resident> urHashtable,Statement urStatement,String urVisitationID) //FOR EDITING
+	public AddGuestDialog(DefaultGUI urDefaultGUI,Hashtable<String,Resident> urHashtable,Statement urStatement,String urVisitationID , int row) //FOR EDITING
 	{
 		this.myStatement = urStatement;
 		this.residentHT = urHashtable;
 		this.myDefaultGUI = urDefaultGUI;
 		this.myVisitationID = urVisitationID;
+		this.row = row;
 
 		dateFormat = new SimpleDateFormat("MM/dd/yyyy");
 		timeFormat = new SimpleDateFormat("hh:mma");
 
-		addButton = new JButton("Update");
+		addButton = new JButton("Update Guest");
 		addButton.setBackground(Color.WHITE);
 		addButton.addActionListener(this);
 		addButton.setActionCommand("UPDATE");
@@ -129,14 +132,15 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 	void populateAllFields()
 	{
 		int[]  selectionList = myDefaultGUI.table.getSelectedRows(); // get the selected row
-		studentRoomTF.setText( myDefaultGUI.tableModel.getValueAt(selectionList[0],5).toString() );
-		guestNameTF.setText( myDefaultGUI.tableModel.getValueAt(selectionList[0],1).toString() );
-		guestAgeTF.setText( myDefaultGUI.tableModel.getValueAt(selectionList[0],2).toString() );
-		guestIDTypes.setSelectedItem( myDefaultGUI.tableModel.getValueAt(selectionList[0],3).toString() );
-		String overnightStatus = myDefaultGUI.tableModel.getValueAt(selectionList[0],8).toString();
+		int row = myDefaultGUI.table.convertRowIndexToModel(selectionList[0]);
+		studentRoomTF.setText( myDefaultGUI.tableModel.getValueAt(row,5).toString() );
+		guestNameTF.setText( myDefaultGUI.tableModel.getValueAt(row,1).toString() );
+		guestAgeTF.setText( myDefaultGUI.tableModel.getValueAt(row,2).toString() );
+		guestIDTypes.setSelectedItem( myDefaultGUI.tableModel.getValueAt(row,3).toString() );
+		String overnightStatus = myDefaultGUI.tableModel.getValueAt(row,8).toString();
 
 	    residentNameCBox.removeAllItems(); // remove all previous items from the combo box
-	    residentNameCBox.addItem( myDefaultGUI.tableModel.getValueAt(selectionList[0],4).toString() );
+	    residentNameCBox.addItem( myDefaultGUI.tableModel.getValueAt(row,4).toString() );
 
 		if ( overnightStatus.equals("No") )
 		{
@@ -182,13 +186,13 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 			int confirmationNo = myStatement.executeUpdate(sql);
 
 			int[]  selectionList = myDefaultGUI.table.getSelectedRows(); // get the selected row
-		    myDefaultGUI.tableModel.setValueAt(guestName,selectionList[0],1);
-			myDefaultGUI.tableModel.setValueAt(guestAge,selectionList[0],2);
-			myDefaultGUI.tableModel.setValueAt(guestIDtype,selectionList[0],3);
-			myDefaultGUI.tableModel.setValueAt(residentName,selectionList[0],4);
-			myDefaultGUI.tableModel.setValueAt(residentRoomNo,selectionList[0],5);
-			myDefaultGUI.tableModel.setValueAt(overnightStatus,selectionList[0],8);
-			myDefaultGUI.tableModel.setValueAt(myDefaultGUI.myFullName,selectionList[0],9);
+		    myDefaultGUI.tableModel.setValueAt(guestName, row,1);
+			myDefaultGUI.tableModel.setValueAt(guestAge, row,2);
+			myDefaultGUI.tableModel.setValueAt(guestIDtype,  row,3);
+			myDefaultGUI.tableModel.setValueAt(residentName,  row,4);
+			myDefaultGUI.tableModel.setValueAt(residentRoomNo,  row,5);
+			myDefaultGUI.tableModel.setValueAt(overnightStatus,  row,8);
+			myDefaultGUI.tableModel.setValueAt(myDefaultGUI.myFullName,  row,9);
 
 			if( confirmationNo > 0)
 			{
@@ -202,14 +206,7 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 		}
 		catch ( SQLException sqlException )
 		{
-			if (sqlException.getMessage().startsWith("Communications") )
-			{
-				JOptionPane.showMessageDialog(this, "No internet connection, please try again later");
-			}
-			else
-			{
-				JOptionPane.showMessageDialog(this, sqlException.getMessage());
-			}
+			JOptionPane.showMessageDialog(this, sqlException.getMessage());
 		}
 		catch ( Exception exception )
 		{
@@ -263,18 +260,11 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 		}//end try
 		catch(MyException myEx)
 		{
-			JOptionPane.showMessageDialog(this,myEx.getMessage());
+			JOptionPane.showMessageDialog(this,myEx.getMessage(), "Warning ",JOptionPane.WARNING_MESSAGE);
 		}
 		catch ( SQLException sqlException )
 		{
-			if (sqlException.getMessage().startsWith("Communications") )
-			{
-				JOptionPane.showMessageDialog(this, "No internet connection! Please try again later!");
-			}
-			else
-			{
-				JOptionPane.showMessageDialog(this, sqlException.getMessage());
-			}
+			JOptionPane.showMessageDialog(this, sqlException.getMessage());
 		}
 		catch ( Exception exception )
 		{
@@ -313,11 +303,11 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 		}
 		else if (!Validate.validateFullName(guestName))
 		{
-			throw new MyException("Please enter first and last name of guest");
+			throw new MyException("Please enter first and last name of guest" + "\n" + "No special characters allowed (1@#$%&*)");
 		}
 		else if(checkIfValuesExist("Banned_Guest","guest_name",guestName))
 		{
-			throw new MyException(guestName+" has been banned from the resident hall, please call campus police and notify RA");
+			throw new MyException(guestName+" has been banned from this location" + "\n" + "Please call campus police and notify RA");
 		}
 		else if (!Validate.validateNumber(guestAge))
 		{
@@ -381,6 +371,11 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 		// check if the source text field is studentRoomTF
 		if (de.getDocument() == studentRoomTF.getDocument() )
 		{
+			// checking to process the card swipe
+			if (residentRoomNo.startsWith("%B") && residentRoomNo.endsWith("%HH") )
+			{
+				processCardSwipe();
+			}
 			residentNameCBox.removeAllItems(); // remove all previous items from the combo box
 			DefaultComboBoxModel model = new DefaultComboBoxModel();
 			model.addElement( "-Select-" );
@@ -395,6 +390,15 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 				}
 			}
 			residentNameCBox.setModel(model);
+		}
+		// check if the source text field is guestNameTF
+		if (de.getDocument() == guestNameTF.getDocument() )
+		{
+			// checking to process the card swipe
+			if (guestName.startsWith("%B") && guestName.endsWith("%HH") )
+			{
+				processGuestCardSwipe();
+			}
 		}
 
         if( residentRoomNo.equals("") || guestName.equals("") || guestAge.equals("") )
@@ -444,6 +448,72 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 			addButton.setEnabled(true);
 		}
     }
+	void processCardSwipe()
+	{
+		SwingUtilities.invokeLater(new Runnable() {
+			public void run()
+			{
+				String studentID = residentRoomNo.substring(residentRoomNo.indexOf("B")+1 , residentRoomNo.indexOf("^"));
+				studentRoomTF.setText("");
+				try
+				{
+					String	SQL_Query = "SELECT * FROM Resident WHERE userID = " + studentID ;
+					ResultSet rs = myStatement.executeQuery(SQL_Query);// Query to get the lockout number of the resident
+					if(!rs.next())
+					{
+						//show Joptionpane if result set is empty
+						JOptionPane.showMessageDialog(null,"No resident found, please try again.");
+					}
+					else
+					{
+						rs.first();//move ResultSet cursor to previous row
+						residentRoomNo = rs.getInt(8)+"";
+						studentRoomTF.setText(residentRoomNo);
+
+						residentNameCBox.removeAllItems(); // remove all previous items from the combo box
+						DefaultComboBoxModel model = new DefaultComboBoxModel();
+						if ( residentHT.containsKey(residentRoomNo) )
+						{
+							Resident myResident = residentHT.get(residentRoomNo);
+							Set<String> keys = myResident.residentHashtable.keySet();
+							for(String key: keys)
+							{
+								String residentName = myResident.residentHashtable.get(key);//get the resident full name from the resident ID (key)
+								model.addElement( residentName );
+							}
+						}
+						residentNameCBox.setModel(model);
+						guestNameTF.requestFocus();
+					}
+					rs.close();
+
+				}//end try
+				catch ( SQLException sqlException )
+				{
+					JOptionPane.showMessageDialog(null, sqlException.getMessage());
+				}
+				catch ( Exception exception )
+				{
+					JOptionPane.showMessageDialog(null, exception.getMessage());
+				}
+			}
+		});
+	}
+
+	void processGuestCardSwipe()
+	{
+		SwingUtilities.invokeLater(new Runnable() {
+			public void run()
+			{
+				String studentID = guestName.substring(guestName.indexOf("B")+1 , guestName.indexOf("^"));
+				guestName = guestName.substring(guestName.indexOf("^")+1);
+				String lastName = guestName.substring(0,guestName.indexOf("/")).trim();
+				String firstName = guestName.substring(guestName.indexOf("/")+1,guestName.indexOf("^")).trim();
+				guestNameTF.setText(firstName +" "+lastName);
+				guestAgeTF.requestFocus();
+			}
+		});
+	}
 
     JPanel setFields()
     {
@@ -512,7 +582,8 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 		d = tk.getScreenSize();
 		setTitle("Add Guest");
 		setSize(d.width/3, d.height/3);
-		setLocation(d.width/3, d.height/4);
+		setSize(d.width/3, 270);
+		setLocation(d.width/3, d.height/4 + d.height/20);
 		setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 		setModalityType(Dialog.ModalityType.APPLICATION_MODAL);
 		setVisible(true);

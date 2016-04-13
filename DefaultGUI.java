@@ -1,9 +1,9 @@
-/**
- * Dorm visitation DefaultGUI for RA and DM
- * Date: 03/11/16
+/* * * * * * * * * * *\
+ * DefaultGUI
+ * Description: The dfault GUI
+ * Date: 4/4/16
  * @author Brandon Ballard & Hanif Mirza
- *
- */
+\* * * * * * * * * * */
 
 import java.awt.*;
 import javax.swing.*;
@@ -23,13 +23,15 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 		try
 		{
 			Class.forName( "com.mysql.jdbc.Driver" );
-			Connection connection = DriverManager.getConnection( "jdbc:mysql://johnny.heliohost.org/falcon16_dorm", "falcon16", "fsu2016" );
+			Connection connection = DriverManager.getConnection( "jdbc:mysql://localhost/dorm", "root", "password");// Brandon's Server
+			//Connection connection = DriverManager.getConnection( "jdbc:mysql://localhost/falcon16_dorm", "root", "root");// Hanif's Server
+
 			Statement statement = connection.createStatement();
-			new DefaultGUI(statement,"dm2016","password","DM");
+			new DefaultGUI(statement,"ra2016","password","RA");
 		}
 		catch ( Exception e )
 		{
-			System.out.println( "Exception"+e.getMessage() );
+			System.out.println( "Exception "+e.getMessage() );
 		}
 	}
 
@@ -42,7 +44,6 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
     JTable 						table;
     DefaultTableModel           tableModel;
   	JScrollPane 				scrollPane, historyScroller;
-  	RowSorter<TableModel> 		sorter;
   	DefaultTableCellRenderer 	centerRenderer;
   	JPopupMenu 					popup;
   	JMenuItem 					editItem, checkOutItem;
@@ -54,7 +55,6 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 	MyClock 					clock;
 	JLabel 						searchLabel, filterLabel;
 	JTextField 					filterTextField;
-	TableRowSorter<TableModel> 	rowSorter;
 
     DefaultGUI(Statement statement, String userID,String password,String accountType)
     {
@@ -62,7 +62,8 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 		this.userID = userID;
 		this.password = password;
 		this.accountType = accountType;
-		df = new SimpleDateFormat("MM/dd/yyyy"); // another format can be "EEEE M/d/yy"
+
+		df = new SimpleDateFormat("MM/dd/yyyy");
 
 		titleLabel = new JLabel("Welcome to Bryant Place - " + df.format(new Date()));
 		titleLabel.setForeground(Color.WHITE);
@@ -133,13 +134,13 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 		layout.setAutoCreateContainerGaps(true);
 		buttonPanel.setLayout(layout);
 
-		seperate = new JLabel("_______________");
+		seperate = new JLabel("______________");
 		seperate.setForeground(Color.WHITE);
-		seperate1 = new JLabel("_______________");
+		seperate1 = new JLabel("______________");
 		seperate1.setForeground(Color.WHITE);
-		seperate2 = new JLabel("_______________");
+		seperate2 = new JLabel("______________");
 		seperate2.setForeground(Color.WHITE);
-		seperate3 = new JLabel("_______________");
+		seperate3 = new JLabel("______________");
 		seperate3.setForeground(Color.WHITE);
 
 		clock = new MyClock();
@@ -215,7 +216,7 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 		{
 			JOptionPane.showMessageDialog(this, exception.getMessage());
 		}
-    } // end of constructor
+    }
 
     void populateResidentHashtable() throws Exception
     {
@@ -245,7 +246,6 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 		}
 		myResultSet1.close();
 
-		// perform a database query to get the DM/RA's full name
 		SQL_Query2 = " Select CONCAT(e.first_name,\" \",e.last_name) as 'Fullname'"+ " From Employee e"+ " Where e.userID = " + "'"+userID+"'" ;
 
 		myResultSet2 = statement.executeQuery(SQL_Query2);
@@ -308,7 +308,10 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 		}
 		else if(e.getActionCommand().equals("LOCK_OUT"))
 		{
-			System.out.println("LOCK OUT");//do lock out
+			if (new PasswordDialog(password).isValid)
+			{
+				new LockOutDialog(this,residentHT,statement);
+			}
 		}
 		else if(e.getActionCommand().equals("HISTORY"))
 		{
@@ -321,23 +324,27 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 		else if(e.getActionCommand().equals("EDIT"))
 		{
 			int[]  selectionList = table.getSelectedRows();
-			String visitationID = tableModel.getValueAt(selectionList[0],0).toString();//get vistationID which is the first column
-			AddGuestDialog	addGuestDialog = new AddGuestDialog(this,residentHT,statement,visitationID);
+			int row = table.convertRowIndexToModel(selectionList[0]);
+			String visitationID = tableModel.getValueAt( row,0 ).toString();
+			AddGuestDialog addGuestDialog = new AddGuestDialog(this,residentHT,statement,visitationID, row);
 		}
-    } // end of actionPerformed(...)
+    }
 
     void doCheckOut()
     {
 		try
 		{
-			int[]  selectionList = table.getSelectedRows();
-			String visitationID = tableModel.getValueAt(selectionList[0],0).toString();
+			int[] selectionList = table.getSelectedRows();
+			int row = table.convertRowIndexToModel(selectionList[0]);
+			String visitationID = tableModel.getValueAt( row,0 ).toString();
 
 			String updateKeyQuery = "UPDATE Visitation_Detail"
 								 + " SET time_out = curtime()"
 								 + " WHERE visitationID = "+ visitationID;
+
 			statement.executeUpdate(updateKeyQuery);
-			tableModel.removeRow(selectionList[0]);
+			tableModel.removeRow( row );
+
 			JOptionPane.showMessageDialog(this, "Guest has been checked out", "Check out successful" , JOptionPane.INFORMATION_MESSAGE);
 		}
 		catch ( SQLException sqlException )
@@ -380,8 +387,7 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 		}
 		else if(historyButton.getText().equals("History"))
 		{
-			PasswordDialog passwordDialog = new PasswordDialog(password);
-			if (passwordDialog.isValid)
+			if (new PasswordDialog(password).isValid)
 			{
 				viewHistory();
 			}
@@ -508,8 +514,9 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
      	else if (me.getClickCount() == 2)
 		{
 			int[]  selectionList = table.getSelectedRows();
-			String visitationID = tableModel.getValueAt(selectionList[0],0).toString();//get vistationID which is the first column
-			AddGuestDialog	addGuestDialog = new AddGuestDialog(this,residentHT,statement,visitationID);
+			int row = table.convertRowIndexToModel(selectionList[0]);
+			String visitationID = tableModel.getValueAt( row,0 ).toString();
+			AddGuestDialog	addGuestDialog = new AddGuestDialog(this,residentHT,statement,visitationID, row);
 		}
 	}
 
@@ -566,4 +573,4 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 		setTitle("Guest Visitation");
 		setVisible(true);
 	}
-} // end of class
+}

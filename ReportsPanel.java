@@ -5,27 +5,11 @@ import java.sql.*;
 import java.awt.*;
 import javax.swing.*;
 import static javax.swing.GroupLayout.Alignment.*;
-//import javax.swing.table.*;
-
-//import java.util.Date;
-//import static javax.swing.GroupLayout.Alignment.*;
-//import java.util.*;
-//import javax.swing.table.*;
-//import java.sql.*;
-//import java.text.SimpleDateFormat;
-
-//import java.awt.*;
-//import javax.swing.*;
+import javax.swing.table.*;
 import javax.swing.event.*;
 import java.awt.event.*;
-//import static javax.swing.GroupLayout.Alignment.*;
-//import javax.swing.table.*;
-//import java.sql.*;
-//import java.text.ParseException;
-//import javax.imageio.ImageIO;
-//import java.io.IOException;
 
-public class HistoryPanel extends JPanel implements ActionListener, DocumentListener, MouseListener
+public class ReportsPanel extends JPanel implements ActionListener, DocumentListener, MouseListener
 {
 	JTextField				startDateTF, endDateTF;
 	JButton 				startDateButton, endDateButton, runButton, printButton;
@@ -40,12 +24,13 @@ public class HistoryPanel extends JPanel implements ActionListener, DocumentList
 	JComboBox				reportCBox;
 	JTextField 				searchTF;
 
-	HistoryPanel(Statement statement, JComboBox reportCBox, JTextField searchTF, JButton printButton)
+	ReportsPanel(Statement statement, JComboBox reportCBox, JTextField searchTF, JButton printButton)
 	{
 		this.printButton = printButton;
 		this.searchTF = searchTF;
 		this.reportCBox = reportCBox;
 		this.statement = statement;
+
 		reportCBox.addActionListener(this);
 		searchTF.getDocument().addDocumentListener(this);
 		printButton.addActionListener(this);
@@ -60,6 +45,14 @@ public class HistoryPanel extends JPanel implements ActionListener, DocumentList
 	{
 		if(e.getSource() == printButton)
 		{
+			if(table != null)
+			{
+				new CreatePDF(table,"History details from " + startDate + " to " + endDate);
+			}
+			else
+			{
+				//JOptionPane.showMessageDialog(this, "Nothing to print", "ERROR" , JOptionPane.ERROR_MESSAGE);
+			}
 		}
 		if(e.getSource() == startDateButton)
 		{
@@ -90,7 +83,10 @@ public class HistoryPanel extends JPanel implements ActionListener, DocumentList
 			endDateCalendar.setVisible(false);
 			endDateButton.setVisible(true);
 
-			if(!startDateTF.getText().trim().equals("") && !endDateTF.getText().trim().equals(""))
+			startDate = startDateTF.getText().trim();
+			endDate = endDateTF.getText().trim();
+
+			if(!startDate.equals("") && !endDate.equals(""))
 			{
 				Date date1 = new Date(startDateCalendar.databaseDate);
 				Date date2 = new Date(endDateCalendar.databaseDate);
@@ -123,11 +119,16 @@ public class HistoryPanel extends JPanel implements ActionListener, DocumentList
 
 	void populateTable(String startDate, String endDate)
 	{
-		String SQL_Query  =     " Select v.visitationID as 'Serial No',v.guest_name as 'Guest',v.guest_age as 'Guest Age',v.guest_ID_type as 'ID Type',CONCAT(r.first_name,\" \",r.last_name) as 'Resident',"
-						+ " r.room_number as 'Room Number', DATE_FORMAT(v.visitation_date,'%m/%d/%Y') as 'Date', TIME_FORMAT(v.time_in, '%h:%i%p')as 'Time in',"
-						+ " v.overnight_status as 'Overnight', CONCAT(e.first_name,\" \",e.last_name) as 'DM/RA Name' "
-						+ " From Visitation_Detail v, Resident r,Employee e"
-						+ " Where v.time_out is null and v.residentID = r.userID and v.empID = e.userID ;" ;
+		String strDate = "'"+startDate+"'";
+		String lastDate = "'"+endDate+"'";
+
+		String SQL_Query =   " Select v.guest_name as 'Guest Name',v.guest_ID_type as 'ID Type',CONCAT(r.first_name,\" \",r.last_name) as 'Resident Name',"
+							+ " r.room_number as 'Room Number', DATE_FORMAT(v.visitation_date,'%m/%d/%Y') as 'Date',TIME_FORMAT(v.time_in, '%h:%i%p')as 'Time in',TIME_FORMAT(v.time_out, '%h:%i%p')as 'Time out',"
+							+ " v.overnight_status as 'Overnight', CONCAT(e.first_name,\" \",e.last_name) as 'DM/RA Name' "
+
+							+ " From Visitation_Detail v, Resident r,Employee e"
+							+ " Where v.visitation_date between "+strDate+" and "+lastDate+" and v.time_out is not null and v.residentID = r.userID and v.empID = e.userID ;" ;
+
 		createTable(SQL_Query);
 	}
 
@@ -154,15 +155,8 @@ public class HistoryPanel extends JPanel implements ActionListener, DocumentList
 		}
 		catch ( SQLException sqlException )
 		{
-			if (sqlException.getMessage().startsWith("Communications")	)
-			{
-				JOptionPane.showMessageDialog(this, "No internet connection, please try again later.");
-			}
-			else
-			{
-				JOptionPane.showMessageDialog(this, sqlException.getMessage());
-				sqlException.printStackTrace();
-			}
+			JOptionPane.showMessageDialog(this, sqlException.getMessage());
+			sqlException.printStackTrace();
 		}
 		catch ( Exception exception )
 		{
@@ -255,6 +249,10 @@ public class HistoryPanel extends JPanel implements ActionListener, DocumentList
 			}
 			else
 			{
+				if (table == null)
+				{
+					System.out.println( "dhdasfdhajfkdshakfasdjkhf " );
+				}
 				table.rowSorter.setRowFilter(RowFilter.regexFilter("(?i)" + text));
 			}
 		}

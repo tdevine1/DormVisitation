@@ -1,19 +1,17 @@
-/**
- * Dorm visitation login dialog
- * Date: 03/11/16
+/* * * * * * * * * * *\
+ * LoginDialog
+ * Description: Log in dialog
+ * Date: 4/4/16
  * @author Brandon Ballard & Hanif Mirza
- *
- */
+\* * * * * * * * * * */
 
 import static javax.swing.GroupLayout.Alignment.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import javax.swing.UIManager;
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.event.*;
 import java.sql.*;
-import java.sql.SQLException;
 
 class LoginDialog extends JDialog implements ActionListener,DocumentListener
 {
@@ -28,10 +26,9 @@ class LoginDialog extends JDialog implements ActionListener,DocumentListener
 	JPasswordField 		passwordTF;
 	JLabel 				accountLabel, usernameLabel, passwordLabel, titleLabel;
 	JComboBox<String> 	comboTypesList;
-	String              username;
-    String              password;
-    Connection 			connection = null;  // manages connection
-    Statement 			statement = null;   // query statement
+	String              username, password;
+    Connection 			connection = null;
+    Statement 			statement = null;
 
 
 	public LoginDialog()
@@ -39,6 +36,7 @@ class LoginDialog extends JDialog implements ActionListener,DocumentListener
 		titleLabel = new JLabel();
 		titleLabel.setForeground(Color.WHITE);
 		titleLabel.setIcon(new ImageIcon("FSU_Logo.png"));
+
 		titlePanel = new JPanel(new FlowLayout());
 		titlePanel.setBackground(Color.GRAY);
 		titlePanel.add(titleLabel);
@@ -67,39 +65,12 @@ class LoginDialog extends JDialog implements ActionListener,DocumentListener
 		setupMainFrame();
 	}
 
-    public void insertUpdate(DocumentEvent de)
-    {
-        username = usernameTF.getText().trim();
-        password = new String(passwordTF.getPassword());
-
-        if( !username.equals("") &&  !password.equals(""))
-        {
-			//if both username and password aren't empty then enable login button
-            loginButton.setEnabled(true);
-        }
-    }
-
-    public void changedUpdate(DocumentEvent de){}
-
-    public void removeUpdate(DocumentEvent de)
-    {
-        username = usernameTF.getText().trim();
-        password = new String(passwordTF.getPassword());
-
-        if( username.equals("") ||  password.equals(""))
-        {
-			//disable login button if username or password is empty
-            loginButton.setEnabled(false);
-        }
-    }
-
 	public void actionPerformed(ActionEvent e)
 	{
 		if( e.getSource() == loginButton )
 		{
 			doLogin();
 		}
-
 		else if(e.getSource() == exitButton )
 		{
 			System.exit(1);
@@ -113,53 +84,52 @@ class LoginDialog extends JDialog implements ActionListener,DocumentListener
 
 		try
 		{
-			 Class.forName( "com.mysql.jdbc.Driver" ); // load database driver class
+			 Class.forName( "com.mysql.jdbc.Driver" );
 
 			 // Remote database server connection,...getConnection( DATABASE_URL, USERNAME, PASSWORD );
-			 connection = DriverManager.getConnection( "jdbc:mysql://johnny.heliohost.org/falcon16_dorm", "falcon16", "fsu2016" );
+			 //connection = DriverManager.getConnection( "jdbc:mysql://johnny.heliohost.org/falcon16_dorm", "falcon16", "fsu2016" );
 			 // Hanif's local database server
 			 //connection = DriverManager.getConnection( "jdbc:mysql://localhost/falcon16_dorm", "root", "root");
-
-			 statement = connection.createStatement();// create Statement for querying database
+			 // Brandon's local database server
+			 connection = DriverManager.getConnection( "jdbc:mysql://localhost/dorm", "root", "password");
+			 statement = connection.createStatement();
 
 			 if ( comboTypesList.getSelectedItem().toString().equals("Resident Director") )
 			 {
 				 if( checkIfValuesExist("RD","userID",username,"password",password))
 				 {
-					 new AdminGUI(); //show RD's GUI
 					 this.dispose();
+					 new AdminGUI(statement,username,password);
 				 }
 				 else
 				 {
 					JOptionPane.showMessageDialog(this, "Login failure:" + "\n" + "Unknown username or bad password");
 				 }
 			 }
-
 			 else if ( comboTypesList.getSelectedItem().toString().equals("Resident Assistant") )
 			 {
 				 if( checkIfValuesExist("RA","userID",username,"password",password))
 				 {
-					 String	sql = "INSERT INTO Log_Detail(log_date,login_time,empID) VALUES (CURDATE(),curtime(),"+ "'"+username+"'" +")";
-					 statement.executeUpdate(sql); // adding RA's log details to database table
+					String	sql = "INSERT INTO Log_Detail(log_date,login_time,empID) VALUES (CURDATE(),curtime(),"+ "'"+username+"'" +")";
+					statement.executeUpdate(sql);
 
-					 new DefaultGUI(statement,username,password,"RA");
-					 this.dispose();
+					this.dispose();
+					new DefaultGUI(statement,username,password,"RA");
 				 }
 				 else
 				 {
 					JOptionPane.showMessageDialog(this, "Login failure:" + "\n" + "Unknown username or bad password");
 				 }
 			 }
-
 			 else if ( comboTypesList.getSelectedItem().toString().equals("Desk Monitor") )
 			 {
 				 if( checkIfValuesExist("DM","userID",username,"password",password))
 				 {
-					 String	sql = "INSERT INTO Log_Detail(log_date,login_time,empID) VALUES (CURDATE(),curtime(),"+ "'"+username+"'" +")";
-					 statement.executeUpdate(sql); // adding DM's log details to database table
+					String	sql = "INSERT INTO Log_Detail(log_date,login_time,empID) VALUES (CURDATE(),curtime(),"+ "'"+username+"'" +")";
+					statement.executeUpdate(sql);
 
-					 new DefaultGUI(statement,username,password,"DM");
-					 this.dispose();
+					this.dispose();
+					new DefaultGUI(statement,username,password,"DM");
 				 }
 				 else
 				 {
@@ -169,18 +139,18 @@ class LoginDialog extends JDialog implements ActionListener,DocumentListener
 			 else
 			 {
 				 JOptionPane.showMessageDialog(this, "Login failure:" + "\n" + "Please select an account type");
-			 	 connection.close(); // unsuccessful login, so close the connection
+			 	 connection.close();
 			     usernameTF.setText("");
 			     passwordTF.setText("");
 			 }
 
-		}// end try
+		}
 
 		catch ( SQLException sqlException )
 		{
 			if (sqlException.getMessage().startsWith("Communications") )
 			{
-				JOptionPane.showMessageDialog(this, "No internet connection! Please try again later!");
+				JOptionPane.showMessageDialog(this, "No internet connection");
 			}
 			else
 			{
@@ -193,27 +163,26 @@ class LoginDialog extends JDialog implements ActionListener,DocumentListener
 		}
 	}
 
-    //this function will return true if values exist in specific columns of a database table
     boolean checkIfValuesExist(String tableName,String columnName1,String columnValue1,String columnName2,String columnValue2) throws Exception
     {
 		 String SQL_Query = "Select * "+
 		 					"From "+tableName+
 		 					" WHERE "+columnName1+" LIKE BINARY "+ "'"+columnValue1+"'" + " && " + columnName2 +" LIKE BINARY "+ "'"+columnValue2+"'";
 
-		 ResultSet resultSet = statement.executeQuery(SQL_Query);// query database
+		 ResultSet resultSet = statement.executeQuery(SQL_Query);
 		 if(!resultSet.next())
 		 {
 			 resultSet.close();
-			 connection.close(); // unseccessful login, so close the connection
+			 connection.close();
 			 statement.close();
 			 usernameTF.setText("");
 			 passwordTF.setText("");
-			 return false; // values don't exist, so return false
+			 return false;
 		 }
 		 else
 		 {
 			resultSet.close();
-			return true; // values exist, so return true
+			return true;
 		 }
     }
 
@@ -262,6 +231,30 @@ class LoginDialog extends JDialog implements ActionListener,DocumentListener
 		return(p);
 	}
 
+	public void insertUpdate(DocumentEvent de)
+	{
+	    username = usernameTF.getText().trim();
+	    password = new String(passwordTF.getPassword());
+
+	    if( !username.equals("") &&  !password.equals(""))
+	    {
+	        loginButton.setEnabled(true);
+	    }
+	}
+
+	public void removeUpdate(DocumentEvent de)
+	{
+	    username = usernameTF.getText().trim();
+	    password = new String(passwordTF.getPassword());
+
+	    if( username.equals("") ||  password.equals(""))
+	    {
+	        loginButton.setEnabled(false);
+	    }
+	}
+
+    public void changedUpdate(DocumentEvent de){}
+
     void setupMainFrame()
 	{
 		setTitle("Guest Visitation Login");
@@ -270,11 +263,11 @@ class LoginDialog extends JDialog implements ActionListener,DocumentListener
 
 		tk = Toolkit.getDefaultToolkit();
 		d = tk.getScreenSize();
-		setSize(d.width/3, d.height/3);
+		//setSize(d.width/3, d.height/3);
+		setSize(d.width/3, 270);//d.height/3 + d.height/30);
 		setLocation(d.width/3, d.height/3);
 		setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 		setModal(true);
 		setVisible(true);
     }
-
-}// end of LoginDialog class
+}

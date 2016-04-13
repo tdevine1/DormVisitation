@@ -9,6 +9,5 @@ import java.util.Set;
 
 class Resident
 {
-	// resident ID is the key and Resident full name is the value
 	Hashtable<String,String> 	residentHashtable = new Hashtable<String, String>();
 }

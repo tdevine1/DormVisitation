@@ -25,7 +25,7 @@ import javax.swing.table.TableRowSorter;
 
 public class MyTable extends JTable
 {
-    public static void main(String[] x)
+    /*public static void main(String[] x)
     {
 		try
 		{
@@ -35,7 +35,7 @@ public class MyTable extends JTable
 
 			Statement statement = connection.createStatement();
 			ResultSet resultSet = statement.executeQuery("SELECT * from Resident ");
-			new TableDialog(resultSet);
+			//new TableDialog(resultSet);
 			statement.close();
 			connection.close();
 		}
@@ -43,7 +43,7 @@ public class MyTable extends JTable
 		{
 			System.out.println( "Exception"+e.getMessage() );
 		}
-    }
+    }*/
 
     ResultSet 						myResultSet;
     DefaultTableModel           	tableModel;
