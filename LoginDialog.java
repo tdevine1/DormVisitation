@@ -1,7 +1,11 @@
 /* * * * * * * * * * *\
- * LoginDialog
- * Description: Log in dialog
- * Date: 4/4/16
+ * LoginDialog.java
+ * Description: Dialog for logging in as an RD, RA, or DM. If the login is successful, it will
+ *				show the frame according to their account type. For RD it will show the AdminGUI and
+ *				for RA and DM it will show the DefaultGUI. It will also give an error message
+ *				if the login is unsuccessful.
+ *
+ * Date: 5/6/16
  * @author Brandon Ballard & Hanif Mirza
 \* * * * * * * * * * */
 
@@ -30,7 +34,7 @@ class LoginDialog extends JDialog implements ActionListener,DocumentListener
     Connection 			connection = null;
     Statement 			statement = null;
 
-
+	//BY BRANDON BALLARD, set up and add components
 	public LoginDialog()
 	{
 		titleLabel = new JLabel();
@@ -56,7 +60,7 @@ class LoginDialog extends JDialog implements ActionListener,DocumentListener
 		buttonPanel.add(loginButton);
 		buttonPanel.add(exitButton);
 
-		fieldPanel = setFields();
+		fieldPanel = setFields();//creates text fields for user input
 
 		getContentPane().add(titlePanel, BorderLayout.NORTH);
 		getContentPane().add(fieldPanel, BorderLayout.CENTER);
@@ -65,18 +69,20 @@ class LoginDialog extends JDialog implements ActionListener,DocumentListener
 		setupMainFrame();
 	}
 
+	//BY BRANDON BALLARD, handles the action events
 	public void actionPerformed(ActionEvent e)
 	{
-		if( e.getSource() == loginButton )
+		if(e.getSource() == loginButton)
 		{
 			doLogin();
 		}
-		else if(e.getSource() == exitButton )
+		else if(e.getSource() == exitButton)
 		{
 			System.exit(1);
 		}
     }
 
+	// Written by Hanif Mirza. This function will perform the login. It will give a warning message if the login is unsuccessful
     void doLogin()
     {
 		username = usernameTF.getText().trim().replaceAll("'", "\\\\'") ;
@@ -85,51 +91,46 @@ class LoginDialog extends JDialog implements ActionListener,DocumentListener
 		try
 		{
 			 Class.forName( "com.mysql.jdbc.Driver" );
-
-			 // Remote database server connection,...getConnection( DATABASE_URL, USERNAME, PASSWORD );
-			 //connection = DriverManager.getConnection( "jdbc:mysql://johnny.heliohost.org/falcon16_dorm", "falcon16", "fsu2016" );
-			 // Hanif's local database server
-			 //connection = DriverManager.getConnection( "jdbc:mysql://localhost/falcon16_dorm", "root", "root");
-			 // Brandon's local database server
-			 connection = DriverManager.getConnection( "jdbc:mysql://localhost/dorm", "root", "password");
+			 connection = DriverManager.getConnection( "jdbc:mysql://localhost/falcon16_dorm", "root", "root");// Hanif's database server
+			 //connection = DriverManager.getConnection( "jdbc:mysql://localhost/dorm", "root", "password"); // Brandon's database server
 			 statement = connection.createStatement();
 
-			 if ( comboTypesList.getSelectedItem().toString().equals("Resident Director") )
+			 if(comboTypesList.getSelectedItem().toString().equals("Resident Director"))
 			 {
-				 if( checkIfValuesExist("RD","userID",username,"password",password))
+				 if(checkIfValuesExist("RD","userID",username,"password",password))//validate Resident Director
 				 {
 					 this.dispose();
-					 new AdminGUI(statement,username,password);
+					 new AdminGUI(statement,username,password);//go to Resident Director main menu
 				 }
 				 else
 				 {
 					JOptionPane.showMessageDialog(this, "Login failure:" + "\n" + "Unknown username or bad password");
 				 }
 			 }
-			 else if ( comboTypesList.getSelectedItem().toString().equals("Resident Assistant") )
+			 else if(comboTypesList.getSelectedItem().toString().equals("Resident Assistant"))
 			 {
-				 if( checkIfValuesExist("RA","userID",username,"password",password))
+				 if(checkIfValuesExist("RA","userID",username,"password",password))//validate Resident Assistant
 				 {
 					String	sql = "INSERT INTO Log_Detail(log_date,login_time,empID) VALUES (CURDATE(),curtime(),"+ "'"+username+"'" +")";
-					statement.executeUpdate(sql);
+					statement.executeUpdate(sql);	// Add RA's login time and date to the database
 
 					this.dispose();
-					new DefaultGUI(statement,username,password,"RA");
+					new DefaultGUI(statement,username,password,"RA");//go to Resident Assistant's main menu
 				 }
 				 else
 				 {
 					JOptionPane.showMessageDialog(this, "Login failure:" + "\n" + "Unknown username or bad password");
 				 }
 			 }
-			 else if ( comboTypesList.getSelectedItem().toString().equals("Desk Monitor") )
+			 else if(comboTypesList.getSelectedItem().toString().equals("Desk Monitor"))
 			 {
-				 if( checkIfValuesExist("DM","userID",username,"password",password))
+				 if(checkIfValuesExist("DM","userID",username,"password",password))//validate Desk Monitor
 				 {
 					String	sql = "INSERT INTO Log_Detail(log_date,login_time,empID) VALUES (CURDATE(),curtime(),"+ "'"+username+"'" +")";
-					statement.executeUpdate(sql);
+					statement.executeUpdate(sql); // Add DM's login time and date to the database
 
 					this.dispose();
-					new DefaultGUI(statement,username,password,"DM");
+					new DefaultGUI(statement,username,password,"DM");//go to Desk Monitor main menu
 				 }
 				 else
 				 {
@@ -143,26 +144,18 @@ class LoginDialog extends JDialog implements ActionListener,DocumentListener
 			     usernameTF.setText("");
 			     passwordTF.setText("");
 			 }
-
 		}
-
-		catch ( SQLException sqlException )
+		catch (SQLException sqlException)
 		{
-			if (sqlException.getMessage().startsWith("Communications") )
-			{
-				JOptionPane.showMessageDialog(this, "No internet connection");
-			}
-			else
-			{
-				JOptionPane.showMessageDialog(this, sqlException.getMessage() );
-			}
+			JOptionPane.showMessageDialog(this, sqlException.getMessage() );
 		}
-		catch ( Exception exception )
+		catch(Exception exception)
 		{
 			JOptionPane.showMessageDialog(this, exception.getMessage() );
 		}
 	}
 
+	// Written by Hanif Mirza. This function will return true if user's username and password match the database and return false otherwise.
     boolean checkIfValuesExist(String tableName,String columnName1,String columnValue1,String columnName2,String columnValue2) throws Exception
     {
 		 String SQL_Query = "Select * "+
@@ -186,6 +179,7 @@ class LoginDialog extends JDialog implements ActionListener,DocumentListener
 		 }
     }
 
+	//BY BRANDON BALLARD, adds fields using group layout
     JPanel setFields()
     {
 		GroupLayout layout;
@@ -236,7 +230,7 @@ class LoginDialog extends JDialog implements ActionListener,DocumentListener
 	    username = usernameTF.getText().trim();
 	    password = new String(passwordTF.getPassword());
 
-	    if( !username.equals("") &&  !password.equals(""))
+	    if(!username.equals("") &&  !password.equals(""))
 	    {
 	        loginButton.setEnabled(true);
 	    }
@@ -247,7 +241,7 @@ class LoginDialog extends JDialog implements ActionListener,DocumentListener
 	    username = usernameTF.getText().trim();
 	    password = new String(passwordTF.getPassword());
 
-	    if( username.equals("") ||  password.equals(""))
+	    if(username.equals("") ||  password.equals(""))
 	    {
 	        loginButton.setEnabled(false);
 	    }
@@ -263,8 +257,7 @@ class LoginDialog extends JDialog implements ActionListener,DocumentListener
 
 		tk = Toolkit.getDefaultToolkit();
 		d = tk.getScreenSize();
-		//setSize(d.width/3, d.height/3);
-		setSize(d.width/3, 270);//d.height/3 + d.height/30);
+		setSize(d.width/3, 270);
 		setLocation(d.width/3, d.height/3);
 		setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 		setModal(true);

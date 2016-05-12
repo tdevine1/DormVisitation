@@ -1,6 +1,8 @@
 /* * * * * * * * * * *\
- * LockOutDialog
- * Description: Lock out dialog
+ * LockOutDialog.java
+ * Description: Used for adding lock outs to resident accounts. user can enter student information or use the swipe card feature.
+ *				Once submitted, the class will tell the user is the lockout was successfully processed and will notify the user if
+ *				the student is out of free lock outs and needs to be charged.
  * Date: 4/4/16
  * @author Brandon Ballard & Hanif Mirza
 \* * * * * * * * * * */
@@ -16,7 +18,7 @@ import javax.swing.event.*;
 import java.util.Date;
 import java.text.SimpleDateFormat;
 
-class LockOutDialog extends JDialog implements ActionListener,DocumentListener
+class LockOutDialog extends JDialog implements ActionListener,DocumentListener, KeyListener
 {
 	JPanel 						buttonPanel, fieldPanel;
 	JButton 					cancelButton, addButton;
@@ -25,13 +27,17 @@ class LockOutDialog extends JDialog implements ActionListener,DocumentListener
 	JComboBox 					residentNameCBox;
 	Statement 					myStatement;
 	String						residentName, raName, residentRoomNo;
-	String						str = "";
+	String						keyString, str = "";
 	DateFormat 					dateFormat, timeFormat;
 	Hashtable<String,Resident> 	residentHT;
 	DefaultGUI					myDefaultGUI;
+	int 						keyCount;
 
+	//BY BRANDON BALLARD
 	public LockOutDialog(DefaultGUI urDefaultGUI,Hashtable<String,Resident> urHashtable,Statement urStatement)
 	{
+		keyCount = 0;
+		keyString = "";
 		this.myStatement = urStatement;
 		this.residentHT = urHashtable;
 		this.myDefaultGUI = urDefaultGUI;
@@ -41,7 +47,6 @@ class LockOutDialog extends JDialog implements ActionListener,DocumentListener
 		addButton.addActionListener(this);
 		addButton.setActionCommand("ADD");
 		addButton.setEnabled(false);
-		getRootPane().setDefaultButton(addButton);
 
 		cancelButton = new JButton("Cancel");
 		cancelButton.setBackground(Color.WHITE);
@@ -61,6 +66,7 @@ class LockOutDialog extends JDialog implements ActionListener,DocumentListener
 		setupMainFrame();
 	}
 
+	//BY BRANDON BALLARD
 	public void actionPerformed(ActionEvent e)
 	{
 		if(e.getActionCommand().equals("ADD"))
@@ -73,6 +79,7 @@ class LockOutDialog extends JDialog implements ActionListener,DocumentListener
 		}
     }
 
+	// Written by Hanif Mirza, this function will add the lockout details of the resident to the database
     void doAddLockOut()
     {
 		ResultSet resultSet;
@@ -127,7 +134,7 @@ class LockOutDialog extends JDialog implements ActionListener,DocumentListener
 		}
 	}
 
-	// this function will validate all the fields, if any field is invalid then it will through exception
+	// Written by Hanif Mirza, this function will validate all the fields, if any field is invalid then it will through exception
 	void validateFields() throws Exception
 	{
 		residentRoomNo = studentRoomTF.getText().trim();
@@ -149,7 +156,7 @@ class LockOutDialog extends JDialog implements ActionListener,DocumentListener
 		}
 	}
 
-	// this function will find resident ID (the key) using the resident full name (the value) from the hashtable
+	// Written by Hanif Mirza, this function will find resident ID (the key) using the resident full name (the value) from the hashtable
 	public String findKey(String value, Hashtable HT)
 	{
 		    String myKey = "";
@@ -174,17 +181,12 @@ class LockOutDialog extends JDialog implements ActionListener,DocumentListener
 		// check if the source text field is studentRoomTF
 		if (de.getDocument() == studentRoomTF.getDocument() )
 		{
-			// checking to process the card swipe
-			if (residentRoomNo.startsWith("%B") && residentRoomNo.endsWith("%HH") )
-			{
-				processCardSwipe();
-			}
 			residentNameCBox.removeAllItems(); // remove all previous items from the combo box
 			DefaultComboBoxModel model = new DefaultComboBoxModel();
 			model.addElement( "-Select-" );
 			if ( residentHT.containsKey(residentRoomNo) )
 			{
-				Resident myResident = residentHT.get(residentRoomNo);
+				Resident myResident = residentHT.get(residentRoomNo); // get the resident object using the room number (key)
 				Set<String> keys = myResident.residentHashtable.keySet();
 				for(String key: keys)
 				{
@@ -221,7 +223,7 @@ class LockOutDialog extends JDialog implements ActionListener,DocumentListener
 
 			if ( residentHT.containsKey(residentRoomNo) )
 			{
-				Resident myResident = residentHT.get(residentRoomNo);
+				Resident myResident = residentHT.get(residentRoomNo); // get the resident object using the room number (key)
 				Set<String> keys = myResident.residentHashtable.keySet();
 				for(String key: keys)
 				{
@@ -242,6 +244,68 @@ class LockOutDialog extends JDialog implements ActionListener,DocumentListener
 		}
     }
 
+    public void keyReleased(KeyEvent ke)
+    {
+	}
+
+    public void keyPressed(KeyEvent ke)
+    {
+	}
+
+	//BY BRANDON BALLARD, this function will detect when a user swipes a card in the appropriate text field.
+    public void keyTyped(KeyEvent ke)
+    {
+		//All cards start with a '%', so if the function detects a '%' and it hasn't previously detected one or if keyString
+		//starts with a '%', then the function adds the text to keyString and moves on to the if statement.
+		if((Character.toString(ke.getKeyChar()).equals("%") && keyCount == 0) || keyString.startsWith("%"))
+		{
+			keyCount++;
+			keyString = keyString + Character.toString(ke.getKeyChar());
+
+			//This if statemnt checks to see if keySting contains everything it needs to be considered a card. All cards end in
+			//'%HH' so it first checks for that and then makes sure the string is at least 20 characers long, if it is then it
+			//makes sure that the string contains at leat one '^' and at least one '?', if everything is good then the function
+			//recognizes the string as a card swipe and moves on to the for loop.
+			if(keyString.endsWith("%HH") && keyCount > 20 && keyString.contains("^") && keyString.contains("?"))
+			{
+				int y = 0;
+				keyCount = 0;
+
+				//this for loop starts at the end of keyString and backs up until it finds two '%' symbols, if it successfully
+				//found two then the function confirms that the user has swiped a card and proceeds.
+				for(int x = keyString.length() - 1; x >= 0; x--)
+				{
+					if(Character.toString(keyString.charAt(x)).equals("%"))
+					{
+						y++;
+
+						//After a card swipe is detected the function checks to see which text field the swipe took place in
+						//and calls the appropriate function.
+						if(y == 2)
+						{
+							residentRoomNo = keyString.substring(x);
+							if(this.getFocusOwner() == studentRoomTF)
+							{
+								System.out.println("4");
+								processCardSwipe();
+							}
+							if(this.getFocusOwner() == raNameTF)
+							{
+								JOptionPane.showMessageDialog(null, "Could not read card \n Please enter RA's name manually", "Error" , JOptionPane.ERROR_MESSAGE);
+								raNameTF.setText("");
+							}
+							keyString = "";
+							x = -1;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	/* Written by Hanif Mirza. This function will process the resident's card swipe. It will parse the resident card ID
+	   and access the database with that card ID to get all information of the resident. If it's valid resident then
+	   it will populate all the fields of the resident. All this sequence of code must be done in a thread. */
 	void processCardSwipe()
 	{
 		SwingUtilities.invokeLater(new Runnable() {
@@ -256,7 +320,9 @@ class LockOutDialog extends JDialog implements ActionListener,DocumentListener
 					if(!rs.next())
 					{
 						//show Joptionpane if result set is empty
-						JOptionPane.showMessageDialog(null,"No resident found, please try again.");
+						JOptionPane.showMessageDialog(null,"Resident could not be found", "Error" , JOptionPane.ERROR_MESSAGE );
+						studentRoomTF.setText("");
+						studentRoomTF.requestFocus();
 					}
 					else
 					{
@@ -274,25 +340,28 @@ class LockOutDialog extends JDialog implements ActionListener,DocumentListener
 							{
 								String residentName = myResident.residentHashtable.get(key);//get the resident full name from the resident ID (key)
 								model.addElement( residentName );
+								raNameTF.requestFocus();
 							}
 						}
 						residentNameCBox.setModel(model);
 					}
 					rs.close();
-
 				}
 				catch ( SQLException sqlException )
 				{
-					JOptionPane.showMessageDialog(null, sqlException.getMessage());
+					JOptionPane.showMessageDialog(null, "Resident could not be found", "Error" , JOptionPane.ERROR_MESSAGE );
+					studentRoomTF.setText(residentRoomNo);
 				}
 				catch ( Exception exception )
 				{
-					JOptionPane.showMessageDialog(null, exception.getMessage());
+					JOptionPane.showMessageDialog(null, exception.getMessage(), "Error" , JOptionPane.ERROR_MESSAGE );
+					studentRoomTF.setText(residentRoomNo);
 				}
 			}
 		});
 	}
 
+	//Adds fields using a group layout, BY BRANDON BALLARD
     JPanel setFields()
     {
 		GroupLayout layout;
@@ -306,10 +375,12 @@ class LockOutDialog extends JDialog implements ActionListener,DocumentListener
 		raNameLabel.setForeground(Color.WHITE);
 
 	 	studentRoomTF = new JTextField(30);
+	 	studentRoomTF.addKeyListener(this);
 	 	studentRoomTF.getDocument().addDocumentListener(this);
 
 	 	raNameTF = new JTextField(30);
 	 	raNameTF.getDocument().addDocumentListener(this);
+	 	raNameTF.addKeyListener(this);
 
 	 	residentNameCBox = new JComboBox();
 		residentNameCBox.addItem("-Select-");

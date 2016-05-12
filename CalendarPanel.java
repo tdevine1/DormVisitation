@@ -1,49 +1,49 @@
+/* * * * * * * * * * *\
+ * CalendarPanel.java
+ * Description: Used when running reports. Constructed with a JTextField and a JButton. When the button is clicked,
+ *				a calendar is shown for user to selcect a date, the selected date populates the passed in text field.
+ *
+ * Date: 5/7/16
+ * @author Brandon Ballard
+\* * * * * * * * * * */
+
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.event.*;
 import java.awt.event.*;
-import java.util.Date;
 import static javax.swing.GroupLayout.Alignment.*;
 import java.util.*;
-import javax.swing.table.*;
-import java.sql.*;
 import java.text.SimpleDateFormat;
 
 class CalendarPanel extends JPanel implements ChangeListener, MouseListener
 {
-	JPanel panel, monthYearPanel, container;
-	GroupLayout layout, layout2;
-	JSpinner monthSpinner, yearSpinner;
-	JTextField yearTF;
-	SpinnerListModel monthModel;
-	SpinnerNumberModel yearModel;
-	String[] monthStrings = {"December", "November", "October", "September", "August", "July",
-							 "June", "May", "April", "March", "February", "January"};
-	String month, currMonth;
-	int year, currYear;
-	SimpleDateFormat yearFormat, monthFormat, dayFormat;
-	Calendar calendar;
-	int dayOfMonth = 1;
-	int maxDays = 0;
-	int v = 0;
-	int selectedDay = 0;
-	int m;
-	public String selectedDate;
-	JTextField field;
-	String databaseDate;
-	JButton button;
+	JPanel 				panel, monthYearPanel, container;
+	GroupLayout		 	layout, layout2;
+	JSpinner 			monthSpinner, yearSpinner;
+	JTextField 			yearTF, field;
+	SpinnerListModel 	monthModel;
+	SpinnerNumberModel 	yearModel;
+	String 				month, currMonth, selectedDate, databaseDate;
+	int 				year, currYear, m, dayOfMonth, maxDays, v, selectedDay;
+	SimpleDateFormat 	yearFormat, monthFormat, dayFormat;
+	Calendar 			calendar;
+	JButton 			button;
+	String[] 			monthStrings = {"December", "November", "October", "September", "August", "July",
+										 "June", "May", "April", "March", "February", "January"};
 
 	CalendarPanel(JTextField field, JButton button)
 	{
-		this.button = button;
-		this.field = field;
+		this.button = button;//this is the button the user presses to show the calendar
+		this.field = field;//this is the text field where the selected date will be placed
 
 		monthFormat = new SimpleDateFormat("MMMM");
 		yearFormat = new SimpleDateFormat("yyyy");
 
+		dayOfMonth = 1;
+		maxDays = v = selectedDay = 0;
 		m = Integer.parseInt(new SimpleDateFormat("M").format(new Date()));
 
-		maxDays = getMaxDays(Integer.parseInt(new SimpleDateFormat("M").format(new Date())));
+		maxDays = getMaxDays(Integer.parseInt(new SimpleDateFormat("M").format(new Date())));//returns how many days are in current month
 		currMonth = monthFormat.format(new Date());
 		currYear = Integer.parseInt(yearFormat.format(new Date()));
 
@@ -76,15 +76,16 @@ class CalendarPanel extends JPanel implements ChangeListener, MouseListener
 		panel.add(new DayPanel("Fri"));
 		panel.add(new DayPanel("Sat"));
 
+		//Add day of month cells to calendar
 		for(int x = 0; x < 6 * 7; x++)
 		{
 			if(x < calendar.get(Calendar.DAY_OF_WEEK) - 1 || dayOfMonth > maxDays)
 			{
-				panel.add(new CellPanel(""));
+				panel.add(new CellPanel(""));//Blank cell **there are a total of 42 cells and only 31 days in a month so not all cells can have a value
 			}
 			else
 			{
-				panel.add(new CellPanel(dayOfMonth, this, currMonth, (int)yearSpinner.getValue())).addMouseListener(this);
+				panel.add(new CellPanel(dayOfMonth, this, currMonth, (int)yearSpinner.getValue())).addMouseListener(this);//Cell with appropriate day of month
 				dayOfMonth++;
 			}
 		}
@@ -131,6 +132,7 @@ class CalendarPanel extends JPanel implements ChangeListener, MouseListener
 		setVisible(false);
 	}
 
+	//Called when user changes the month or year on the calendar
 	public void stateChanged(ChangeEvent ce)
 	{
 		month = (String)monthSpinner.getValue();
@@ -142,6 +144,7 @@ class CalendarPanel extends JPanel implements ChangeListener, MouseListener
 		}
 	}
 
+	//Returns the total number of days in the passed in month
 	int getMaxDays(int month)
 	{
 		if(month == 9 || month == 4 || month == 6 || month == 11)
@@ -165,6 +168,7 @@ class CalendarPanel extends JPanel implements ChangeListener, MouseListener
 		}
 	}
 
+	//Function name says it all, returns true if passed in year is a leap year, else returns false
     public boolean isLeapYear(int year)
     {
 		if ((year % 400 == 0) || ((year % 4 == 0) && (year % 100 != 0)))
@@ -173,61 +177,61 @@ class CalendarPanel extends JPanel implements ChangeListener, MouseListener
 		}
 		else
 		{
-		return false;
+			return false;
 		}
     }
 
-
+	//Called anytime the user has changed year or month
 	void updateCalendar()
 	{
 		container.removeAll();
 		currMonth = (String)monthSpinner.getValue();
 
-		if(currMonth == "January")
+		if(currMonth.equals("January"))
 		{
 			m = 1;
 		}
-		else if(currMonth == "February")
+		else if(currMonth.equals("February"))
 		{
 			m = 2;
 		}
-		else if(currMonth == "March")
+		else if(currMonth.equals("March"))
 		{
 			m = 3;
 		}
-		else if(currMonth == "April")
+		else if(currMonth.equals("April"))
 		{
 			m = 4;
 		}
-		else if(currMonth == "May")
+		else if(currMonth.equals("May"))
 		{
 			m = 5;
 		}
-		else if(currMonth == "June")
+		else if(currMonth.equals("June"))
 		{
 			m = 6;
 		}
-		else if(currMonth == "July")
+		else if(currMonth.equals("July"))
 		{
 			m = 7;
 		}
-		else if(currMonth == "August")
+		else if(currMonth.equals("August"))
 		{
 			m = 8;
 		}
-		else if(currMonth == "September")
+		else if(currMonth.equals("September"))
 		{
 			m = 9;
 		}
-		else if(currMonth == "October")
+		else if(currMonth.equals("October"))
 		{
 			m = 10;
 		}
-		else if(currMonth == "November")
+		else if(currMonth.equals("November"))
 		{
 			m = 11;
 		}
-		else if(currMonth == "December")
+		else if(currMonth.equals("December"))
 		{
 			m = 12;
 		}
@@ -292,6 +296,7 @@ class CalendarPanel extends JPanel implements ChangeListener, MouseListener
 	{
 	}
 
+	//Populates text field, hides calendar
 	public void mouseClicked(MouseEvent me)
 	{
 		field.setText(m + "/" + selectedDay + "/" + currYear);

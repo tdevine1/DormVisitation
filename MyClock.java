@@ -1,8 +1,12 @@
 /* * * * * * * * * * *\
- * MyClock
- * Description: Clock to show time, has two construstors for different clock styles
- * Date: 4/4/16
- * @author Brandon Ballard & Hanif Mirza
+ * MyClock.java
+ * Description: Clock to show time, has two construstors for different clock styles, constructor #1 is meant for a small and
+ *				simple clock, it is used in DefaultGui and AdminGUI in the button panels. Constructor #2 is meant to be a more
+ *				advanced clock and shows time, day of week, and the date, used in AdminGui's homepage, each clock type is a JPanel
+ *				and can be added to the program as a component.
+ *
+ * Date: 5/7/16
+ * @author Brandon Ballard
 \* * * * * * * * * * */
 
 import java.awt.*;
@@ -12,12 +16,13 @@ import java.util.*;
 import java.text.*;
 import javax.swing.Timer;
 
+//Simple clock shows time and AM/PM
 class MyClock extends JPanel implements ActionListener
 {
-	JLabel timeLabel, dayLabel, dateLabel, clockLabel;
-	SimpleDateFormat timeFormat, dayFormat, dateFormat, df;
-	Timer timer;
-	boolean advanced;
+	JLabel 				timeLabel, dayLabel, dateLabel, clockLabel;
+	SimpleDateFormat 	timeFormat, dayFormat, dateFormat, df;
+	Timer 				timer;
+	boolean 			advanced;
 
 	public MyClock()
 	{
@@ -36,9 +41,11 @@ class MyClock extends JPanel implements ActionListener
 
 		setUpGUI();
 
+		//Add components
 		add(clockLabel, BorderLayout.CENTER);
 	}
 
+	//More advanced clock, shows time, day of week, and date
 	public MyClock(String s)
 	{
 		advanced = true;
@@ -68,11 +75,13 @@ class MyClock extends JPanel implements ActionListener
 
 		setUpGUI();
 
+		//Add components
 		add(dateLabel, BorderLayout.NORTH);
 		add(timeLabel, BorderLayout.CENTER);
 		add(dayLabel, BorderLayout.SOUTH);
 	}
 
+	//This is where the clocks get updated, the timer will call this method
 	public void actionPerformed(ActionEvent ae)
 	{
 		if(advanced)

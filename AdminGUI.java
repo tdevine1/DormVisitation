@@ -1,6 +1,8 @@
 /* * * * * * * * * * *\
- * AdminGUI
- * Description: The administrators GUI for managing accounts, viewing history, and printing reports
+ * AdminGUI.java
+ * Description: The administrators GUI for managing accounts, viewing history, and printing reports, the home screen or
+ *				main menu is created from MyStatsPanel.java and displays general information about the resident hall
+ *
  * Date: 4/11/16
  * @author Brandon Ballard & Hanif Mirza
 \* * * * * * * * * * */
@@ -12,26 +14,13 @@ import java.awt.event.*;
 import static javax.swing.GroupLayout.Alignment.*;
 import javax.swing.table.*;
 import java.sql.*;
+import java.awt.datatransfer.*;
+import java.awt.dnd.*;
+import java.io.*;
 
-class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, MouseListener, DocumentListener
+class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, MouseListener, DocumentListener, DropTargetListener
 {
-	public static void main(String[] x)
-	{
-		try
-		{
-			Class.forName( "com.mysql.jdbc.Driver" );
-			Connection connection = DriverManager.getConnection( "jdbc:mysql://localhost/dorm", "root", "password");
-			Statement statement = connection.createStatement();
-			new AdminGUI(statement,"admin","password");
-		}
-		catch ( Exception e )
-		{
-			e.printStackTrace();
-			System.out.println( "Exception " + e.getMessage());
-		}
-	}
-
-	JButton 					printButton, homeButton, viewHistoryButton, manageAccountsButton, newAccountButton, deleteAccountButton, editAccountButton, logOutButton;
+	JButton 					importButton, printButton, homeButton, viewHistoryButton, manageAccountsButton, newAccountButton, deleteAccountButton, editAccountButton, logOutButton;
 	JLabel 						searchLabel, seperate, seperate3, seperate4, seperate5, seperate6, accountTypeLabel;
 	JPanel 						statsPanel, buttonPanel, northPanel, menuButtonPanel, southPanel;
 	GroupLayout 				layout, layout2;
@@ -47,14 +36,16 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 	MyClock 					clock;
 	JTextField 					searchTF, searchReportTF;
 	ReportsPanel 				reportsPanel;
+	DropTarget 					dropTarget;
 
+	//BY BRANDON BALLARD
     AdminGUI(Statement statement, String userID,String password)
     {
 		this.statement = statement;
 		this.userID = userID;
 		this.password = password;
 
-		//____________________________________________________________________________NORTH PANEL
+		//____________________________________________________________________________CREATE NORTH PANEL
 
 		accountTypeLabel = new JLabel("Select an account type:");
 		accountTypeLabel.setForeground(Color.WHITE);
@@ -70,6 +61,7 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 		reportCBox = new JComboBox();
 		reportCBox.addItem("-Select-");
 		reportCBox.addItem("History Report");
+		reportCBox.addItem("Lock Out Report");
 		reportCBox.setVisible(false);
 		reportCBox.addActionListener(this);
 
@@ -79,7 +71,7 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 		northPanel.add(accountCBox);
 		northPanel.add(reportCBox);
 
-		//______________________________________________________________________________SOUTH PANEL
+		//______________________________________________________________________________CREATE SOUTH PANEL
 
 		searchLabel = new JLabel("Search:");
 		searchLabel.setVisible(false);
@@ -90,6 +82,7 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 		searchTF.setVisible(false);
 
 		searchReportTF = new JTextField(20);
+		searchReportTF.getDocument().addDocumentListener(this);
 		searchReportTF.setVisible(false);
 
 		southPanel = new JPanel(new FlowLayout());
@@ -98,8 +91,10 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 		southPanel.add(searchTF);
 		southPanel.add(searchReportTF);
 
-		//______________________________________________________________________________//POP UP (RIGHT CLICK ON A TABLE)
+		//______________________________________________________________________________//CREATE POP UP (RIGHT CLICK ON A TABLE)
 
+		//When a user right clicks on a table in the account management feature, a popup will allow the user to either
+		//edit or delete the selected account
         editItem = new JMenuItem("Edit");
         editItem.addActionListener(this);
         editItem.setActionCommand("EDIT");
@@ -120,9 +115,8 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 		//______________________________________________________________________________SET UP RAMAINING PANELS AND PANES
 
 		scrollPane = new JScrollPane();
-
-		statsPanel = new MyStatsPanel();
-		reportsPanel = new ReportsPanel(statement, reportCBox, searchReportTF, printButton);
+		statsPanel = new MyStatsPanel(this, statement);
+		reportsPanel = new ReportsPanel(this,statement, reportCBox);
 
 		//______________________________________________________________________________ADD COMPONENTS AND SET UP MAIN FRAME
 
@@ -138,9 +132,12 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 		setAccountManagerButtonsVisible(false);
     }
 
+	//BY BRANDON BALLARD
     public void actionPerformed(ActionEvent e)
     {
 		//________________________________________________________________ACTION COMMANDS FOR MAIN MENU BUTTONS
+
+		//Shows the account management buttons and panels and hides the rest
 		if(e.getActionCommand().equals("ACCOUNTS"))
 		{
 			setTitle("Welcome to Bryant Place - Account Manager");
@@ -150,9 +147,11 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 			setMenuButtonsVisible(false);
 			setAccountManagerButtonsVisible(true);
 		}
+		//Shows the account reports buttons and panels and hides the rest
 		else if(e.getActionCommand().equals("HISTORY"))
 		{
-			reportsPanel = new ReportsPanel(statement, reportCBox, searchReportTF, printButton);
+			reportsPanel.removeAll();
+			reportsPanel = new ReportsPanel(this,statement, reportCBox);
 			setTitle("Welcome to Bryant Place - Reports");
 			remove(statsPanel);
 			setMenuButtonsVisible(false);
@@ -162,6 +161,7 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 			accountTypeLabel.setText("Select report type:");
 			add(reportsPanel, BorderLayout.CENTER);
 		}
+		//Logs the user out of the system
 		else if(e.getActionCommand().equals("LOG_OFF"))
 		{
 			doLogout();
@@ -180,6 +180,30 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 		{
 			doDelete();
 		}
+		else if(e.getActionCommand().equals("IMPORT_EXCEL"))
+		{
+			new ImportExcel(statement);
+			accountType = "Resident";
+			showAccountListTable();
+		}
+		else if(e.getSource() == printButton)
+		{
+			if(reportsPanel.table != null)
+			{
+				if(reportCBox.getSelectedIndex() == 1)
+				{
+					new CreatePDF(reportsPanel.table,"History details from " + reportsPanel.startDate + " to " + reportsPanel.endDate);
+				}
+				else if(reportCBox.getSelectedIndex() == 2)
+				{
+					new CreatePDF(reportsPanel.table,"Lock out details from " + reportsPanel.startDate + " to " + reportsPanel.endDate);
+				}
+			}
+			else
+			{
+				JOptionPane.showMessageDialog(this, "Nothing to print", "ERROR" , JOptionPane.ERROR_MESSAGE);
+			}
+		}
 
 		//________________________________________________________________ACTION COMMANDS FOR RETURNING TO MAIN MENU
 		if(e.getActionCommand().equals("HOME"))
@@ -193,6 +217,7 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 			reportCBox.setVisible(false);
 			reportCBox.setSelectedIndex(0);
 			setAccountManagerButtonsVisible(false);
+			importButton.setVisible(false);
 		}
 
 		//________________________________________________________________ACTION COMMANDS FOR SWITCHING BETWEEN ACCOUNT
@@ -205,17 +230,20 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 			newAccountButton.setVisible(false);
 			deleteAccountButton.setVisible(false);
 			editAccountButton.setVisible(false);
+			importButton.setVisible(false);
 		}
 		else if(accountCBox.getSelectedIndex() == 1)
 		{
 			accountType = "Resident";
 			showAccountListTable();
+
 			searchLabel.setVisible(true);
 			searchTF.setVisible(true);
 			newAccountButton.setVisible(true);
 			deleteAccountButton.setVisible(true);
 			editAccountButton.setVisible(true);
 			seperate.setVisible(true);
+			importButton.setVisible(true);
 			searchReportTF.setVisible(false);
 			newAccountButton.setText("New Resident");
 			deleteAccountButton.setText("Delete Resident");
@@ -236,6 +264,7 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 			newAccountButton.setText("New Banned Guest");
 			deleteAccountButton.setText("Delete Banned Guest");
 			editAccountButton.setText("Edit Banned Guest");
+			importButton.setVisible(false);
 		}
 		else if(accountCBox.getSelectedIndex() == 3)
 		{
@@ -252,6 +281,7 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 			newAccountButton.setText("New Employee");
 			deleteAccountButton.setText("Delete Employee");
 			editAccountButton.setText("Edit Employee");
+			importButton.setVisible(false);
 		}
 		else if(accountCBox.getSelectedIndex() == 4)
 		{
@@ -265,26 +295,42 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 			searchLabel.setVisible(true);
 			searchTF.setVisible(true);
 			searchReportTF.setVisible(false);
+			importButton.setVisible(false);
 			newAccountButton.setText("New Employee");
 			deleteAccountButton.setText("Delete Employee");
 			editAccountButton.setText("Edit Employee");
 		}
-
-		if(reportCBox.getSelectedIndex() == 1)
+		//________________________________________________________________ACTION COMMANDS FOR SWITCHING BETWEEN REPORT
+		//                                                                TYPES WHEN REPORTS IS OPEN
+		if(reportCBox.getSelectedIndex() == 1  || reportCBox.getSelectedIndex() == 2)
 		{
 			printButton.setVisible(true);
-			searchReportTF.setVisible(true);
-			searchTF.setVisible(false);
-			searchLabel.setVisible(true);
+
+			if(reportsPanel.table != null)
+			{
+				searchReportTF.setVisible(true);
+				searchLabel.setVisible(true);
+			}
+			else
+			{
+				searchReportTF.setVisible(false);
+				searchLabel.setVisible(false);
+			}
 		}
 		else if(reportCBox.getSelectedIndex() == 0)
 		{
 			printButton.setVisible(false);
 			searchReportTF.setVisible(false);
+			if(reportsPanel.scrollPane != null)
+			{
+				reportsPanel.remove(reportsPanel.scrollPane);
+				reportsPanel.scrollPane = null;
+				reportsPanel.table = null;
+			}
 		}
     }
 
-    void doAdd()
+    void doAdd()//___________________________________________ADD A NEW ACCOUNT
     {
 		if(accountType.equals("BannedGuest"))
 		{
@@ -296,45 +342,124 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 		}
 		else if(accountType.equals("RA"))
 		{
-			new AddEmployeeDialog(this,statement);
+			new AddEmployeeDialog(this,statement,accountType);
 		}
 		else if(accountType.equals("DM"))
 		{
-			new AddEmployeeDialog(this,statement);
+			new AddEmployeeDialog(this,statement,accountType);
 		}
 	}
 
-    void doEdit()
+    void doEdit()//___________________________________________EDIT AN ACCOUNT
     {
 		int[]  selectionList = table.getSelectedRows();
-		int row = table.convertRowIndexToModel(selectionList[0]);
-		String visitationID = tableModel.getValueAt(row,0).toString();
 
-		if(accountType.equals("BannedGuest"))
+		if (selectionList.length == 1)
 		{
-			new AddBannedGuestDialog(this,statement,visitationID, row);
+			int row = table.convertRowIndexToModel(selectionList[0]);
+			String accountID = tableModel.getValueAt(row,0).toString();
+
+			if(accountType.equals("BannedGuest"))
+			{
+				new AddBannedGuestDialog(this,statement,accountID, row);
+			}
+			else if(accountType.equals("Resident"))
+			{
+				new AddResidentDialog(this,statement,accountID, row);
+			}
+			else if(accountType.equals("RA"))
+			{
+				new AddEmployeeDialog(this,statement,accountType,accountID, row);
+			}
+			else if(accountType.equals("DM"))
+			{
+				new AddEmployeeDialog(this,statement,accountType,accountID, row);
+			}
 		}
-		else if(accountType.equals("Resident"))
+		else
 		{
-			new AddResidentDialog(this,statement,visitationID, row);
-		}
-		else if(accountType.equals("RA"))
-		{
-			new AddEmployeeDialog(this,statement,visitationID, row);
-		}
-		else if(accountType.equals("DM"))
-		{
-			new AddEmployeeDialog(this,statement,visitationID, row);
+			JOptionPane.showMessageDialog(this,"Please select a row from the table to edit", "Warning ",JOptionPane.WARNING_MESSAGE);
 		}
 	}
 
+	// Written by Hanif Mirza. This function will delete an account (Resident, RA,DM,or Banned Guest). It depends on what account admin selects
 	void doDelete()
     {
-		int[]  selectionList = table.getSelectedRows();
-		int row = table.convertRowIndexToModel(selectionList[0]);
-		String visitationID = tableModel.getValueAt(row,0).toString();
+		String	sql;
+		int 	confirmationNo = 0;
+		int 	accountsDeleted = 0;
+		int[]  	selectionList = table.getSelectedRows();
+
+		if(selectionList.length >= 1)
+		{
+			for(int i = selectionList.length; i > 0; i--)
+			{
+				int row = table.convertRowIndexToModel(selectionList[i - 1]);
+				String accountID = tableModel.getValueAt(row,0).toString(); // First column will have the accountID, which is the key
+
+				try
+				{
+					if(accountType.equals("BannedGuest"))
+					{
+						sql = "DELETE FROM Banned_Guest WHERE guestID = "+ "'"+accountID+"'";
+						confirmationNo = statement.executeUpdate(sql); // delete the account
+					}
+					else if(accountType.equals("Resident"))
+					{
+						sql = "DELETE FROM Resident WHERE userID = "+ "'"+accountID+"'";
+						confirmationNo = statement.executeUpdate(sql); // delete the account
+					}
+					else if(accountType.equals("RA"))
+					{
+						sql = "DELETE FROM Employee WHERE userID = "+ "'"+accountID+"'";
+						confirmationNo = statement.executeUpdate(sql); // delete the account
+
+						sql = "DELETE FROM RA WHERE userID = "+ "'"+accountID+"'";
+						statement.executeUpdate(sql);
+					}
+					else if(accountType.equals("DM"))
+					{
+						sql = "DELETE FROM Employee WHERE userID = "+ "'"+accountID+"'";
+						confirmationNo = statement.executeUpdate(sql);// delete the account
+
+						sql = "DELETE FROM DM WHERE userID = "+ "'"+accountID+"'";
+						statement.executeUpdate(sql);
+
+					}
+
+					tableModel.removeRow(row);
+
+					if( confirmationNo > 0)
+					{
+						accountsDeleted++;
+					}
+				}
+				catch ( SQLException sqlException )
+				{
+					JOptionPane.showMessageDialog(this, sqlException.getMessage());
+				}
+				catch ( Exception exception )
+				{
+					JOptionPane.showMessageDialog(this, exception.getMessage());
+				}
+			}
+
+			if(accountsDeleted > 1)
+			{
+				JOptionPane.showMessageDialog(this, accountsDeleted + " accounts have been deleted", "Success" , JOptionPane.INFORMATION_MESSAGE );
+			}
+			else
+			{
+				JOptionPane.showMessageDialog(this, "Account has been deleted", "Success" , JOptionPane.INFORMATION_MESSAGE );
+			}
+		}
+		else
+		{
+			JOptionPane.showMessageDialog(this,"Please select a row from the table to delete", "Warning ",JOptionPane.WARNING_MESSAGE);
+		}
 	}
 
+	// Written by Hanif Mirza. This function will perform the log out. It will store Resident Director's log out time to the database
 	void doLogout()
 	{
 		try
@@ -346,96 +471,82 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 			this.dispose();
 			new LoginDialog();
 		}
-		catch ( Exception exception )
+		catch(Exception exception)
 		{
 			JOptionPane.showMessageDialog(this, exception.getMessage());
 		}
 	}
 
+	// Written by Hanif Mirza. This function will create a table with selected account type, such as Resident, RA, DM, and Banned Guest. It depends on what account type admin selects
 	void showAccountListTable()
 	{
 		if(accountType.equals("BannedGuest"))
 		{
-			SQL_Query =   " Select v.visitationID as 'Serial No',v.guest_name as 'Guest Name',v.guest_ID_type as 'ID Type',CONCAT(r.first_name,\" \",r.last_name) as 'Resident Name',"
-							+ " r.room_number as 'Room Number', DATE_FORMAT(v.visitation_date,'%m/%d/%Y') as 'Date',TIME_FORMAT(v.time_in, '%h:%i%p')as 'Time in',TIME_FORMAT(v.time_out, '%h:%i%p')as 'Time out',"
-							+ " v.overnight_status as 'Overnight', CONCAT(e.first_name,\" \",e.last_name) as 'DM/RA Name' "
-
-							+ " From Visitation_Detail v, Resident r,Employee e"
-							+ " Where ( v.visitation_date BETWEEN CURDATE()-INTERVAL 1 WEEK AND CURDATE() ) and v.time_out is not null and v.residentID = r.userID and v.empID = e.userID ;" ;
+			String SQL_Query  = " Select b.guestID as 'Guest ID',b.guest_name as 'Full Name',b.gender as 'Gender',"
+							  + " b.dorm_name as 'Location',b.category as 'Category',b.comments as 'Comments'"
+							  + " From Banned_Guest b";
 			createTable(SQL_Query);
 		}
 		else if(accountType.equals("Resident"))
 		{
-			String SQL_Query  =     " Select v.visitationID as 'Serial No',v.guest_name as 'Guest',v.guest_age as 'Guest Age',v.guest_ID_type as 'ID Type',CONCAT(r.first_name,\" \",r.last_name) as 'Resident',"
-							+ " r.room_number as 'Room Number', DATE_FORMAT(v.visitation_date,'%m/%d/%Y') as 'Date', TIME_FORMAT(v.time_in, '%h:%i%p')as 'Time in',"
-							+ " v.overnight_status as 'Overnight', CONCAT(e.first_name,\" \",e.last_name) as 'DM/RA Name' "
-
-							+ " From Visitation_Detail v, Resident r,Employee e"
-							+ " Where v.time_out is null and v.residentID = r.userID and v.empID = e.userID ;" ;
+			String SQL_Query  = " Select r.userID as 'Resident ID',r.first_name as 'First Name',r.last_name as 'Last Name',r.gender as 'Gender',"
+							  + " r.email as 'Email', r.phone as 'Phone', r.dorm_name as 'Location',"
+							  + " r.room_number as 'Room', r.number_of_lockouts as 'Lockout'"
+							  + " From Resident r";
 			createTable(SQL_Query);
 		}
 		else if(accountType.equals("RA"))
 		{
-			SQL_Query =   " Select v.visitationID as 'Serial No',v.guest_name as 'Guest Name',v.guest_ID_type as 'ID Type',CONCAT(r.first_name,\" \",r.last_name) as 'Resident Name',"
-							+ " r.room_number as 'Room Number', DATE_FORMAT(v.visitation_date,'%m/%d/%Y') as 'Date',TIME_FORMAT(v.time_in, '%h:%i%p')as 'Time in',TIME_FORMAT(v.time_out, '%h:%i%p')as 'Time out',"
-							+ " v.overnight_status as 'Overnight', CONCAT(e.first_name,\" \",e.last_name) as 'DM/RA Name' "
+			String SQL_Query  = " Select r.userID as 'Username',r.password as 'Password',e.first_name as 'First Name',e.last_name as 'Last Name',"
+							  + " e.email as 'Email', e.phone as 'Phone'"
 
-							+ " From Visitation_Detail v, Resident r,Employee e"
-							+ " Where v.visitation_date = curdate() and v.time_out is not null and v.residentID = r.userID and v.empID = e.userID ;" ;
+							  + " From Employee e, RA r"
+							  + " Where e.userID = r.userID " ;
 			createTable(SQL_Query);
 		}
 		else if(accountType.equals("DM"))
 		{
-			SQL_Query =   " Select v.visitationID as 'Serial No',v.guest_name as 'Guest Name',v.guest_ID_type as 'ID Type',CONCAT(r.first_name,\" \",r.last_name) as 'Resident Name',"
-							+ " r.room_number as 'Room Number', DATE_FORMAT(v.visitation_date,'%m/%d/%Y') as 'Date',TIME_FORMAT(v.time_in, '%h:%i%p')as 'Time in',TIME_FORMAT(v.time_out, '%h:%i%p')as 'Time out',"
-							+ " v.overnight_status as 'Overnight', CONCAT(e.first_name,\" \",e.last_name) as 'DM/RA Name' "
+			String SQL_Query  = " Select d.userID as 'Username',d.password as 'Password',e.first_name as 'First Name',e.last_name as 'Last Name',"
+							  + " e.email as 'Email', e.phone as 'Phone'"
 
-							+ " From Visitation_Detail v, Resident r,Employee e"
-							+ " Where v.visitation_date = curdate() and v.time_out is not null and v.residentID = r.userID and v.empID = e.userID ;" ;
+							  + " From Employee e, DM d"
+							  + " Where e.userID = d.userID " ;
 			createTable(SQL_Query);
 		}
 	}
 
+	// Written by Hanif Mirza. This function will create a table with selected account type, such as Resident, RA, DM, and Banned Guest and show the table on AdminGUI
 	void createTable(String SQL_Query)
 	{
 		try
 		{
 			remove(scrollPane);
 
-			table = new MyTable(statement.executeQuery(SQL_Query));
+			table = new MyTable(statement.executeQuery(SQL_Query)); // Construct a table from ResultSet
 			table.getSelectionModel().addListSelectionListener(this);
 			tableModel = (DefaultTableModel)table.getModel();
 			table.addMouseListener(this);
 
 			scrollPane = new  JScrollPane(table);
+			dropTarget = new DropTarget(scrollPane, this);
 
 			add(scrollPane, BorderLayout.CENTER);
 			searchLabel.setVisible(true);
 			searchTF.setVisible(true);
 		}
-		catch ( SQLException sqlException )
+		catch(SQLException se)
 		{
-			if (sqlException.getMessage().startsWith("Communications")	)
-			{
-				JOptionPane.showMessageDialog(this, "No internet connection, please try again later.");
-			}
-			else
-			{
-				JOptionPane.showMessageDialog(this, sqlException.getMessage());
-				sqlException.printStackTrace();
-			}
+			JOptionPane.showMessageDialog(this, se.getMessage());
 		}
-		catch ( Exception exception )
+		catch(Exception e)
 		{
-			JOptionPane.showMessageDialog(this, exception.getMessage());
-			exception.printStackTrace();
+			JOptionPane.showMessageDialog(this, e.getMessage());
 		}
 	}
 
 	public void valueChanged(ListSelectionEvent lse)
 	{
 		editAccountButton.setEnabled(false);
-		deleteAccountButton.setEnabled(false);
 
 		if(table.getSelectedRows().length == 1)
 		{
@@ -444,6 +555,7 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 		}
 	}
 
+	//BY BRANDON BALLARD, creates and adds the account management components using a group layout
 	void createAccountMangerButtonPanel()
 	{
 		newAccountButton = new JButton("New Account");
@@ -451,12 +563,19 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 		newAccountButton.addActionListener(this);
 		newAccountButton.setActionCommand("NEW");
 		newAccountButton.setMinimumSize(new Dimension(120,25));
-		getRootPane().setDefaultButton(newAccountButton);
 
 		printButton = new JButton("Print to PDF");
+		printButton.addActionListener(this);
 		printButton.setVisible(false);
 		printButton.setBackground(Color.WHITE);
 		printButton.setMinimumSize(new Dimension(120,25));
+
+		importButton = new JButton("Import Excel");
+		importButton.setVisible(false);
+		importButton.addActionListener(this);
+		importButton.setActionCommand("IMPORT_EXCEL");
+		importButton.setBackground(Color.WHITE);
+		importButton.setMinimumSize(new Dimension(120,25));
 
 		deleteAccountButton = new JButton("Delete Account");
 		deleteAccountButton.setBackground(Color.WHITE);
@@ -498,6 +617,7 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 		.addComponent(editAccountButton)
 		.addComponent(deleteAccountButton)
 		.addComponent(printButton)
+		.addComponent(importButton)
 		.addComponent(homeButton));
 		layout.setHorizontalGroup(hGroup2);
 
@@ -508,10 +628,12 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 		vGroup2.addGroup(layout.createParallelGroup(BASELINE).addComponent(editAccountButton));
 		vGroup2.addGroup(layout.createParallelGroup(BASELINE).addComponent(deleteAccountButton));
 		vGroup2.addGroup(layout.createParallelGroup(BASELINE).addComponent(printButton));
+		vGroup2.addGroup(layout.createParallelGroup(BASELINE).addComponent(importButton));
 		vGroup2.addGroup(layout.createParallelGroup(BASELINE).addComponent(homeButton));
         layout.setVerticalGroup(vGroup2);
 	}
 
+	//BY BRANDON BALLARD, creates and adds the main menu components using a group layout
 	void createMenuButtonPanel()
 	{
 		viewHistoryButton = new JButton("Reports");
@@ -563,6 +685,7 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
         layout2.setVerticalGroup(vGroup);
 	}
 
+	//BY BRANDON BALLARD, toggles between different features on the system
     void setAccountManagerButtonsVisible(boolean b)
     {
 		if(b)
@@ -593,6 +716,7 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 		}
 	}
 
+	//BY BRANDON BALLARD, toggles between different features on the system
     void setMenuButtonsVisible(boolean b)
     {
 		if(b)
@@ -611,6 +735,69 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 			seperate4.setVisible(false);
 			seperate5.setVisible(false);
 		}
+	}
+
+	//BY BRANDON BALLARD, handles the drag and drop file feature, if the account management feature is activated and
+	//the resident account type is selected, you can drop an excel file and populate the resident list in the database.
+	//The system will not allow illegal files
+	public void drop(DropTargetDropEvent dtde)
+	{
+		if(accountCBox.getSelectedIndex() == 1)
+		{
+			java.util.List<File> fileList;
+			Transferable transferableData;
+			File file;
+
+			transferableData = dtde.getTransferable();
+
+			try
+			{
+				if(transferableData.isDataFlavorSupported(DataFlavor.javaFileListFlavor))
+				{
+					dtde.acceptDrop(DnDConstants.ACTION_COPY);
+
+					fileList = (java.util.List<File>)(transferableData.getTransferData(DataFlavor.javaFileListFlavor));
+
+					for(int n = 0; n < fileList.size(); n++)
+					{
+						file = fileList.get(n);
+						new ImportExcel(statement, file);
+						accountType = "Resident";
+						showAccountListTable();
+					}
+				}
+				else
+				{
+					System.out.println("File list flavor not supported");
+				}
+			}
+			catch(UnsupportedFlavorException ufe)
+			{
+				System.out.println("Unsopported flavor found");
+				ufe.printStackTrace();
+			}
+			catch(IOException ioe)
+			{
+				System.out.println("IOException found getting transferable data.");
+				ioe.printStackTrace();
+			}
+		}
+	}
+
+	public void dragExit(DropTargetEvent dte)
+	{
+	}
+
+	public void dropActionChanged(DropTargetDragEvent dtde)
+	{
+	}
+
+	public void dragOver(DropTargetDragEvent dtde)
+	{
+	}
+
+	public void dragEnter(DropTargetDragEvent dtde)
+	{
 	}
 
     public void mouseExited(MouseEvent me){}
@@ -648,19 +835,33 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 	{
 		try
 		{
-			String text = searchTF.getText();
-			if (text.trim().length() == 0)
+			if (e.getDocument() == searchTF.getDocument() )
 			{
-				table.rowSorter.setRowFilter(null);
+				String text = searchTF.getText();
+				if (text.trim().length() == 0)
+				{
+					table.rowSorter.setRowFilter(null);
+				}
+				else
+				{
+					table.rowSorter.setRowFilter(RowFilter.regexFilter("(?i)" + text));
+				}
 			}
-			else
+			else if (e.getDocument() == searchReportTF.getDocument() )
 			{
-				table.rowSorter.setRowFilter(RowFilter.regexFilter("(?i)" + text));
+				String text = searchReportTF.getText();
+				if (text.trim().length() == 0)
+				{
+					reportsPanel.table.rowSorter.setRowFilter(null);
+				}
+				else
+				{
+					reportsPanel.table.rowSorter.setRowFilter(RowFilter.regexFilter("(?i)" + text));
+				}
 			}
 		}
 		catch ( Exception ee )
 		{
-			ee.printStackTrace();
 			System.out.println( "Exception "+ee.getMessage());
 		}
 	}
@@ -669,20 +870,34 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 	{
 		try
 		{
-			String text = searchTF.getText();
-			if (text.trim().length() == 0)
+			if (e.getDocument() == searchTF.getDocument() )
 			{
-				table.rowSorter.setRowFilter(null);
+				String text = searchTF.getText();
+				if (text.trim().length() == 0)
+				{
+					table.rowSorter.setRowFilter(null);
+				}
+				else
+				{
+					table.rowSorter.setRowFilter(RowFilter.regexFilter("(?i)" + text));
+				}
 			}
-			else
+			else if (e.getDocument() == searchReportTF.getDocument() )
 			{
-				table.rowSorter.setRowFilter(RowFilter.regexFilter("(?i)" + text));
+				String text = searchReportTF.getText();
+				if (text.trim().length() == 0)
+				{
+					reportsPanel.table.rowSorter.setRowFilter(null);
+				}
+				else
+				{
+					reportsPanel.table.rowSorter.setRowFilter(RowFilter.regexFilter("(?i)" + text));
+				}
 			}
 		}
 		catch ( Exception ee )
 		{
-			ee.printStackTrace();
-			System.out.println( "Exception "+ee.getMessage() );
+			System.out.println( "Exception "+ee.getMessage());
 		}
 	}
 	public void changedUpdate(DocumentEvent e){}
@@ -693,8 +908,6 @@ class AdminGUI extends JFrame implements ActionListener, ListSelectionListener, 
 		Dimension   d;
 		tk = Toolkit.getDefaultToolkit();
 		d = tk.getScreenSize();
-		//setSize(d.width/2 + d.width/4, d.height/2 + d.width / 6);
-		//setSize(d.width/2 + d.width/4, d.height/2 + d.width / 5);
 		setSize(d.width/2 + d.width/4, 600);
 		setLocation((d.width/4 + d.width/4)/4, (d.height/2 + d.width / 40) / 8);
 		setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);

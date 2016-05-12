@@ -1,10 +1,13 @@
-/**
- * Add Guest Dialog
- * Description: Adds a new guest to table in main frame or edits an existing one
- * Date: 03/11/16
- * @author Brandon Ballard & Hanif Mirza
+/* * * * * * * * * * *\
+ * AddGuestDialog.java
+ * Description: Allows user to enter guest information and save it, used for checking in and editing guests.
+ *				Will validate each field when user submits. This dialog also has the card swipe feature. Rather
+ *				than the user typing in the student room# and name and the guests name they can simply
+ *				use a swipe card machine along with the student and guests FSU or Pierpont card.
  *
- */
+ * Date: 5/7/16
+ * @author Brandon Ballard & Hanif Mirza
+\* * * * * * * * * * */
 
 import java.awt.event.*;
 import static javax.swing.GroupLayout.Alignment.*;
@@ -15,27 +18,9 @@ import java.awt.*;
 import javax.swing.*;
 import javax.swing.event.*;
 import java.util.Date;
-import java.text.SimpleDateFormat;
 
-class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
+class AddGuestDialog extends JDialog implements ActionListener,DocumentListener, KeyListener
 {
-    public static void main(String[] x)
-    {
-		try
-		{
-			Class.forName( "com.mysql.jdbc.Driver" );
-			Connection connection = DriverManager.getConnection( "jdbc:mysql://johnny.heliohost.org/falcon16_dorm", "falcon16", "fsu2016" );
-			Statement statement = connection.createStatement();
-			String	sql = "";
-
-			statement.close();
-			connection.close();
-		}
-		catch ( Exception exception )
-		{
-			System.out.println(exception.getMessage());
-		}
-    }
 
 	JPanel 						buttonPanel, fieldPanel;
 	JButton 					cancelButton, addButton;
@@ -46,27 +31,32 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 	JComboBox 					residentNameCBox,guestIDTypes;
 	DefaultGUI					myDefaultGUI;
 	Statement 					myStatement;
-	String						residentRoomNo, residentName, residentID, guestName, guestIDtype, guestAge, overnightStatus, currTime, currDate, myVisitationID;
+	String						keyString, residentRoomNo, residentName, residentID, guestName, guestIDtype, guestAge, overnightStatus, currTime, currDate, myVisitationID;
 	DateFormat 					dateFormat, timeFormat;
 	Hashtable<String,Resident> 	residentHT;
-	int row;
+	int 						row, keyCount;
 
-	public AddGuestDialog(DefaultGUI urDefaultGUI,Hashtable<String,Resident> urHashtable,Statement urStatement) //FOR ADDING A GUEST
+	//CONSTRUCTOR FOR ADDING A GUEST BY BRANDON BALLARD
+	public AddGuestDialog(DefaultGUI urDefaultGUI,Hashtable<String,Resident> urHashtable,Statement urStatement)
 	{
+		keyString = "";
+		keyCount = 0;
+
 		this.myStatement = urStatement;
 		this.residentHT = urHashtable;
 		this.myDefaultGUI = urDefaultGUI;
 		this.row = row;
 
-		dateFormat = new SimpleDateFormat("MM/dd/yyyy");
-		timeFormat = new SimpleDateFormat("hh:mma");
+		dateFormat = new SimpleDateFormat("M/d/yyyy");
+		timeFormat = new SimpleDateFormat("h:mma");
+
+		//________________________________________________________________Create buttons and button panel
 
 		addButton = new JButton("Add Guest");
 		addButton.setBackground(Color.WHITE);
 		addButton.addActionListener(this);
 		addButton.setActionCommand("ADD");
 		addButton.setEnabled(false);
-		getRootPane().setDefaultButton(addButton);
 
 		cancelButton = new JButton("Cancel");
 		cancelButton.setBackground(Color.WHITE);
@@ -78,10 +68,15 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 		buttonPanel.add(cancelButton);
 		buttonPanel.add(addButton);
 
+		//________________________________________________________________Add text fields for user input
+
 		fieldPanel = setFields();
+
 	 	studentRoomTF.getDocument().addDocumentListener(this);
 		guestNameTF.getDocument().addDocumentListener(this);
 		guestAgeTF.getDocument().addDocumentListener(this);
+
+		//________________________________________________________________Add components to container
 
 		getContentPane().add(fieldPanel, BorderLayout.CENTER);
 		getContentPane().add(buttonPanel, BorderLayout.SOUTH);
@@ -89,16 +84,22 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 		setupMainFrame();
 	}
 
-	public AddGuestDialog(DefaultGUI urDefaultGUI,Hashtable<String,Resident> urHashtable,Statement urStatement,String urVisitationID , int row) //FOR EDITING
+	//CONSTRUSTOR FOR EDITING A GUEST BY BRANDON BALLARD
+	public AddGuestDialog(DefaultGUI urDefaultGUI,Hashtable<String,Resident> urHashtable,Statement urStatement,String urVisitationID , int row)
 	{
+		keyString = "";
+		keyCount = 0;
+
 		this.myStatement = urStatement;
 		this.residentHT = urHashtable;
 		this.myDefaultGUI = urDefaultGUI;
 		this.myVisitationID = urVisitationID;
 		this.row = row;
 
-		dateFormat = new SimpleDateFormat("MM/dd/yyyy");
-		timeFormat = new SimpleDateFormat("hh:mma");
+		dateFormat = new SimpleDateFormat("M/d/yyyy");
+		timeFormat = new SimpleDateFormat("h:mma");
+
+		//________________________________________________________________Create buttons and button panel
 
 		addButton = new JButton("Update Guest");
 		addButton.setBackground(Color.WHITE);
@@ -116,11 +117,19 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 		buttonPanel.add(cancelButton);
 		buttonPanel.add(addButton);
 
+		//________________________________________________________________Add text fields for user input
+
 		fieldPanel = setFields();
+
+		//________________________________________________________________Populate text fields with selected accounts info
+
 		populateAllFields();
+
 	 	studentRoomTF.getDocument().addDocumentListener(this);
 		guestNameTF.getDocument().addDocumentListener(this);
 		guestAgeTF.getDocument().addDocumentListener(this);
+
+		//________________________________________________________________Add components to container
 
 		getContentPane().add(fieldPanel, BorderLayout.CENTER);
 		getContentPane().add(buttonPanel, BorderLayout.SOUTH);
@@ -128,11 +137,9 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 		setupMainFrame();
 		setTitle("Edit Guest");
 	}
-
+	//Written by Hanif Mirza, This function will use the information selected on table in DefaultGUI.java to populate text fields with guest info
 	void populateAllFields()
 	{
-		int[]  selectionList = myDefaultGUI.table.getSelectedRows(); // get the selected row
-		int row = myDefaultGUI.table.convertRowIndexToModel(selectionList[0]);
 		studentRoomTF.setText( myDefaultGUI.tableModel.getValueAt(row,5).toString() );
 		guestNameTF.setText( myDefaultGUI.tableModel.getValueAt(row,1).toString() );
 		guestAgeTF.setText( myDefaultGUI.tableModel.getValueAt(row,2).toString() );
@@ -152,6 +159,7 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 		}
 	}
 
+	//BY BRANDON BALLARD
 	public void actionPerformed(ActionEvent e)
 	{
 		if(e.getActionCommand().equals("ADD"))
@@ -168,6 +176,7 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 		}
     }
 
+	// Written by Hanif Mirza, This function update the information of currently checked-in guest
 	void doUpdateGuest()
     {
 		try
@@ -185,7 +194,6 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 
 			int confirmationNo = myStatement.executeUpdate(sql);
 
-			int[]  selectionList = myDefaultGUI.table.getSelectedRows(); // get the selected row
 		    myDefaultGUI.tableModel.setValueAt(guestName, row,1);
 			myDefaultGUI.tableModel.setValueAt(guestAge, row,2);
 			myDefaultGUI.tableModel.setValueAt(guestIDtype,  row,3);
@@ -214,6 +222,7 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 		}
 	}
 
+	// Written by Hanif Mirza, this function will add the checked-in details of new guest to the database and also add it to the DefaultGUI table
     void doAddGuest()
     {
 		try
@@ -222,14 +231,14 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 			Resident myResident = residentHT.get(residentRoomNo); // get the Resident object from resident's room number
 			String residentID = findKey(residentName,myResident.residentHashtable);//get  resident ID (the key) from resident name (the value)
 
-			// database statement to insert the check-out details
+			// database statement to insert the check-in details
 			String	sql = "INSERT INTO Visitation_Detail(guest_name,guest_age,guest_ID_type,visitation_date,time_in,overnight_status,empID,residentID)"
 					   + " VALUES ("+ "'"+guestName+"'" +","+ guestAge +","+ "'"+guestIDtype+"'" +","+ "CURDATE(),curtime(),"+ "'"+overnightStatus+"'" +","
 					   + "'"+myDefaultGUI.userID+"'" +","+  "'"+residentID+"'" +")";
 
 			int confirmationNo = myStatement.executeUpdate(sql,Statement.RETURN_GENERATED_KEYS);
 
-			ResultSet rs = myStatement.getGeneratedKeys(); // the the Auto Generated Primary Key, which is visitation details ID
+			ResultSet rs = myStatement.getGeneratedKeys(); // the Auto Generated Primary Key, which is visitation details ID
 
 			int visitationID = 0;
 			if (rs.next())
@@ -257,7 +266,7 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 				JOptionPane.showMessageDialog(this, guestName + " is checked in", "Check in successful" , JOptionPane.INFORMATION_MESSAGE);
 			}
 
-		}//end try
+		}
 		catch(MyException myEx)
 		{
 			JOptionPane.showMessageDialog(this,myEx.getMessage(), "Warning ",JOptionPane.WARNING_MESSAGE);
@@ -272,7 +281,7 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 		}
 	}
 
-	// this function will validate all the fields, if any field is invalid then it will through exception
+	// Written by Hanif Mirza, this function will validate all the fields, if any field is invalid then it will through an exception
 	void validateFields() throws Exception
 	{
 		residentRoomNo = studentRoomTF.getText().trim();
@@ -326,23 +335,23 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 		}
 	}
 
-	// this function will find resident ID (the key) using the resident full name (the value) from the hashtable
+	// Written by Hanif Mirza, this function will find resident ID (the key) using the resident full name (the value) from the hashtable
 	public String findKey(String value, Hashtable HT)
 	{
-		    String myKey = "";
-			Set<String> keys = HT.keySet();
-			for(String key: keys)
+		String myKey = "";
+		Set<String> keys = HT.keySet();
+		for(String key: keys)
+		{
+			if (HT.get(key).equals(value))
 			{
-				if (HT.get(key).equals(value))
-				{
-				   myKey = key;
-				}
+			   myKey = key;
 			}
+		}
 
-		   return myKey;
+		return myKey;
 	}
 
-    //this function will return true if values exist in specific column of a database table
+    // Written by Hanif Mirza,this function will return true if values exist in specific column of a database table
     boolean checkIfValuesExist(String tableName,String columnName,String columnValue) throws Exception
     {
 		 String SQL_Query = "Select * "+"From "+tableName+" WHERE "+columnName+" LIKE "+ "'"+columnValue+"'";
@@ -360,7 +369,7 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 		 }
     }
 
-    public void insertUpdate(DocumentEvent de)
+   	public void insertUpdate(DocumentEvent de)
     {
 		residentRoomNo = studentRoomTF.getText().trim();
 		residentName = residentNameCBox.getSelectedItem().toString();
@@ -368,37 +377,25 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 		guestName = guestNameTF.getText().trim();
 		guestAge = guestAgeTF.getText().trim();
 
-		// check if the source text field is studentRoomTF
+		// check if the users insert room number on studentRoomTF
 		if (de.getDocument() == studentRoomTF.getDocument() )
 		{
-			// checking to process the card swipe
-			if (residentRoomNo.startsWith("%B") && residentRoomNo.endsWith("%HH") )
-			{
-				processCardSwipe();
-			}
-			residentNameCBox.removeAllItems(); // remove all previous items from the combo box
+			residentNameCBox.removeAllItems();
 			DefaultComboBoxModel model = new DefaultComboBoxModel();
 			model.addElement( "-Select-" );
-			if ( residentHT.containsKey(residentRoomNo) )
+
+			if (residentHT.containsKey(residentRoomNo))
 			{
-				Resident myResident = residentHT.get(residentRoomNo);
+				Resident myResident = residentHT.get(residentRoomNo); // get the resident object using the room number (key)
 				Set<String> keys = myResident.residentHashtable.keySet();
+
 				for(String key: keys)
 				{
-					String residentName = myResident.residentHashtable.get(key);//get the resident full name from the resident ID (key)
+					String residentName = myResident.residentHashtable.get(key); //get the resident full name from the resident ID (key)
 					model.addElement( residentName );
 				}
 			}
 			residentNameCBox.setModel(model);
-		}
-		// check if the source text field is guestNameTF
-		if (de.getDocument() == guestNameTF.getDocument() )
-		{
-			// checking to process the card swipe
-			if (guestName.startsWith("%B") && guestName.endsWith("%HH") )
-			{
-				processGuestCardSwipe();
-			}
 		}
 
         if( residentRoomNo.equals("") || guestName.equals("") || guestAge.equals("") )
@@ -410,6 +407,7 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 			addButton.setEnabled(true);
 		}
     }
+
     public void changedUpdate(DocumentEvent de){}
 
     public void removeUpdate(DocumentEvent de)
@@ -420,15 +418,15 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 		guestName = guestNameTF.getText().trim();
 		guestAge = guestAgeTF.getText().trim();
 
-		// check if the source text field is studentRoomTF
+		// check if the users insert room number on studentRoomTF
 		if (de.getDocument() == studentRoomTF.getDocument() )
 		{
-			residentNameCBox.removeAllItems(); // remove all previous items from the combo box
+			residentNameCBox.removeAllItems();
 			DefaultComboBoxModel model = new DefaultComboBoxModel();
 			model.addElement( "-Select-" );
 			if ( residentHT.containsKey(residentRoomNo) )
 			{
-				Resident myResident = residentHT.get(residentRoomNo);
+				Resident myResident = residentHT.get(residentRoomNo); // get the resident object using the room number (key)
 				Set<String> keys = myResident.residentHashtable.keySet();
 				for(String key: keys)
 				{
@@ -448,6 +446,71 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 			addButton.setEnabled(true);
 		}
     }
+
+    public void keyReleased(KeyEvent ke)
+    {
+	}
+
+    public void keyPressed(KeyEvent ke)
+    {
+	}
+
+	//BY BRANDON BALLARD, this function will detect when a user swipes a card in the appropriate text field.
+    public void keyTyped(KeyEvent ke)
+    {
+		//All cards start with a '%', so if the function detects a '%' and it hasn't previously detected one or if keyString
+		//starts with a '%', then the function adds the text to keyString and moves on to the if statement.
+		if((Character.toString(ke.getKeyChar()).equals("%") && keyCount == 0) || keyString.startsWith("%"))
+		{
+			keyCount++;
+			keyString = keyString + Character.toString(ke.getKeyChar());
+
+			//This if statemnt checks to see if keySting contains everything it needs to be considered a card. All cards end in
+			//'%HH' so it first checks for that and then makes sure the string is at least 20 characers long, if it is then it
+			//makes sure that the string contains at leat one '^' and at least one '?', if everything is good then the function
+			//recognizes the string as a card swipe and moves on to the for loop.
+			if(keyString.endsWith("%HH") && keyCount > 20 && keyString.contains("^") && keyString.contains("?"))
+			{
+				int y = 0;
+				keyCount = 0;
+
+				//this for loop starts at the end of keyString and backs up until it finds two '%' symbols, if it successfully
+				//found two then the function confirms that the user has swiped a card and proceeds.
+				for(int x = keyString.length() - 1; x >= 0; x--)
+				{
+					if(Character.toString(keyString.charAt(x)).equals("%"))
+					{
+						y++;
+						//After a card swipe is detected the function checks to see which text field the swipe took place in
+						//and calls the appropriate function.
+						if(y == 2)
+						{
+							residentRoomNo = keyString.substring(x);
+							if(this.getFocusOwner() == studentRoomTF)
+							{
+								processCardSwipe();
+							}
+							else if(this.getFocusOwner() == guestNameTF)
+							{
+								processGuestCardSwipe();
+							}
+							else if(this.getFocusOwner() == guestAgeTF)
+							{
+								JOptionPane.showMessageDialog(null, "Could not read card \n Please enter guest age manually", "Error" , JOptionPane.ERROR_MESSAGE);
+								guestAgeTF.setText("");
+							}
+							keyString = "";
+							x = -1;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	/* Written by Hanif Mirza. This function will process the resident's card swipe. It will parse the resident card ID
+	   and access the database with that card ID to get all information of the resident. If it's valid resident then
+	   it will populate all the fields of the resident. All this sequence of code must be done in a thread. */
 	void processCardSwipe()
 	{
 		SwingUtilities.invokeLater(new Runnable() {
@@ -457,64 +520,83 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 				studentRoomTF.setText("");
 				try
 				{
-					String	SQL_Query = "SELECT * FROM Resident WHERE userID = " + studentID ;
+					String	SQL_Query = "SELECT CONCAT(r.first_name,\" \",r.last_name),r.room_number FROM Resident r WHERE r.userID = " + studentID ;
 					ResultSet rs = myStatement.executeQuery(SQL_Query);// Query to get the lockout number of the resident
 					if(!rs.next())
 					{
 						//show Joptionpane if result set is empty
-						JOptionPane.showMessageDialog(null,"No resident found, please try again.");
+						JOptionPane.showMessageDialog(null,"Resident could not be found", "Error" , JOptionPane.ERROR_MESSAGE );
+						studentRoomTF.requestFocus();
 					}
 					else
 					{
 						rs.first();//move ResultSet cursor to previous row
-						residentRoomNo = rs.getInt(8)+"";
+						String resName = rs.getString(1);
+						residentRoomNo = rs.getInt(2)+"";
 						studentRoomTF.setText(residentRoomNo);
 
 						residentNameCBox.removeAllItems(); // remove all previous items from the combo box
 						DefaultComboBoxModel model = new DefaultComboBoxModel();
-						if ( residentHT.containsKey(residentRoomNo) )
-						{
-							Resident myResident = residentHT.get(residentRoomNo);
-							Set<String> keys = myResident.residentHashtable.keySet();
-							for(String key: keys)
-							{
-								String residentName = myResident.residentHashtable.get(key);//get the resident full name from the resident ID (key)
-								model.addElement( residentName );
-							}
-						}
+						model.addElement( resName );
 						residentNameCBox.setModel(model);
 						guestNameTF.requestFocus();
 					}
 					rs.close();
-
-				}//end try
+				}
 				catch ( SQLException sqlException )
 				{
-					JOptionPane.showMessageDialog(null, sqlException.getMessage());
+					JOptionPane.showMessageDialog(null, "Resident could not be found", "Error" , JOptionPane.ERROR_MESSAGE );
+					studentRoomTF.setText(residentRoomNo);
 				}
 				catch ( Exception exception )
 				{
-					JOptionPane.showMessageDialog(null, exception.getMessage());
+					JOptionPane.showMessageDialog(null, exception.getMessage(), "Error" , JOptionPane.ERROR_MESSAGE );
+					studentRoomTF.setText(residentRoomNo);
 				}
 			}
 		});
 	}
+
+	/* Written by Hanif Mirza. This function will process the guest's card swipe. It will parse the guest name from the guest ID and
+	   set it to the guestNameTF. All this sequence of code must be done in a thread. */
 
 	void processGuestCardSwipe()
 	{
 		SwingUtilities.invokeLater(new Runnable() {
 			public void run()
 			{
-				String studentID = guestName.substring(guestName.indexOf("B")+1 , guestName.indexOf("^"));
-				guestName = guestName.substring(guestName.indexOf("^")+1);
-				String lastName = guestName.substring(0,guestName.indexOf("/")).trim();
-				String firstName = guestName.substring(guestName.indexOf("/")+1,guestName.indexOf("^")).trim();
-				guestNameTF.setText(firstName +" "+lastName);
-				guestAgeTF.requestFocus();
+				try
+				{
+					String studentID = guestName.substring(guestName.indexOf("B")+1 , guestName.indexOf("^"));
+					guestName = guestName.substring(guestName.indexOf("^")+1);
+
+					String lastName = guestName.substring(0,guestName.indexOf("/")).trim();
+					String part1 = lastName.substring(0,1);
+					String part2 = lastName.substring(1).toLowerCase();
+					lastName = part1 + part2; // First letter of last name is uppercase and rest of it are lower case
+
+					String firstName = guestName.substring(guestName.indexOf("/")+1,guestName.indexOf("^")).trim();
+					if(firstName.split(" ").length > 1)
+					{
+						firstName = firstName.split(" ")[0];
+					}
+					String firstPart = firstName.substring(0,1);
+					String secPart = firstName.substring(1).toLowerCase();
+					firstName = firstPart + secPart; // First letter of first name is uppercase and rest of it are lower case
+					guestNameTF.setText(firstName +" "+lastName);
+					guestAgeTF.requestFocus();
+				}
+				catch(Exception e)
+				{
+					guestNameTF.setText("");
+					JOptionPane.showMessageDialog(null, "Could not read card \n Please enter geust name manually", "Error" , JOptionPane.ERROR_MESSAGE);
+					guestNameTF.requestFocus();
+				}
 			}
 		});
 	}
 
+	//BY BRANDON BALLARD, adds fields using a group layout
     JPanel setFields()
     {
 		GroupLayout layout;
@@ -534,9 +616,11 @@ class AddGuestDialog extends JDialog implements ActionListener,DocumentListener
 		guestIDLabel.setForeground(Color.WHITE);
 
 	 	studentRoomTF = new JTextField(30);
+	 	studentRoomTF.addKeyListener(this);
 		guestNameTF = new JTextField();
+		guestNameTF.addKeyListener(this);
 		guestAgeTF = new JTextField();
-
+		guestAgeTF.addKeyListener(this);
 
 		residentNameCBox = new JComboBox();
 		residentNameCBox.addItem("-Select-");

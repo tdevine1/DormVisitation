@@ -1,24 +1,20 @@
-/**
- * Dorm visitation password dialog
- * Date: 03/28/16
- * @author Brandon Ballard & Hanif Mirza
- *
- */
+/* * * * * * * * * * *\
+ * DefaultGUI.java
+ * Description: Any feature on the application that we feel needs to be "protected" can use this class which requires the user
+ *				to enter the password of the currently signed in account in order to proceed. If the password is incorrect, an
+ *				error message is shown and prompts the user to retry
+ * Date: 4/4/16
+ * @author Brandon Ballard
+\* * * * * * * * * * */
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import javax.swing.UIManager;
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.event.*;
 
 class PasswordDialog extends JDialog implements ActionListener,DocumentListener
 {
-	public static void main(String[] x)
-	{
-		new PasswordDialog("yay");
-	}
-
 	JPanel				buttonPanel, fieldPanel, blankPanel;
 	JButton 			okButton, exitButton;
 	JPasswordField 		passwordTF;
@@ -58,6 +54,7 @@ class PasswordDialog extends JDialog implements ActionListener,DocumentListener
 		fieldPanel.add(passwordLabel);
         fieldPanel.add(passwordTF);
 
+		//Add components
 		getContentPane().add(blankPanel, BorderLayout.NORTH);
 		getContentPane().add(fieldPanel, BorderLayout.CENTER);
 		getContentPane().add(buttonPanel, BorderLayout.SOUTH);
@@ -78,6 +75,7 @@ class PasswordDialog extends JDialog implements ActionListener,DocumentListener
 		}
     }
 
+	//This method will validate the password
 	void validatePassword()
 	{
 

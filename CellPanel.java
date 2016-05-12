@@ -1,23 +1,28 @@
+/* * * * * * * * * * *\
+ * CellPanel.java
+ * Description: Used by CalendarPanel.java, represents each individual "day" cell on the calendar. When mouse hovers over a cell
+ *				the background color changes to gray. If the cells value is the same as the current date, the cell is highlited
+ *				blue. Also has another constructor to create a blank cell. If a cell is clicked and not blank, the value is
+ *				sent to CalendarPanel.java where it gets handled.
+ *
+ * Date: 5/7/16
+ * @author Brandon Ballard
+\* * * * * * * * * * */
+
 import java.awt.*;
 import javax.swing.*;
 import java.util.*;
 import java.awt.event.*;
-import java.awt.*;
-import javax.swing.*;
-import java.awt.event.*;
-import java.util.*;
 import java.text.*;
-import javax.swing.Timer;
 
 class CellPanel extends JPanel implements MouseListener
 {
-	Random random;
-	JLabel day;
-	int dayNum, currYear;
-	CalendarPanel cp;
-	boolean active = false;
-	boolean today = false;
+	JLabel 			day;
+	int 			dayNum, currYear;
+	CalendarPanel 	cp;
+	boolean 		active = false, today = false;
 
+	//Constructor for creating a cell with value
 	public CellPanel(int day, CalendarPanel cp, String currMonth, int currYear)
 	{
 		this.currYear = currYear;
@@ -27,11 +32,11 @@ class CellPanel extends JPanel implements MouseListener
 
 		active = true;
 		dayNum = day;
-		random = new Random();
 		setBackground(Color.WHITE);
 		addMouseListener(this);
 		add(this.day);
 
+		//Check to see if cell value matches current date, if so, make it blue
 		if(Integer.parseInt(new SimpleDateFormat("d").format(new Date())) == day && new SimpleDateFormat("MMMMM").format(new Date()).equals(currMonth)&& Integer.parseInt(new SimpleDateFormat("yyyy").format(new Date())) == currYear)
 		{
 			today = true;
@@ -39,18 +44,22 @@ class CellPanel extends JPanel implements MouseListener
 			this.day.setForeground(Color.WHITE);
 		}
 	}
+
+	//Constructor for creating a blank cell
 	public CellPanel(String day)
 	{
 		this.day = new JLabel("");
 		setBackground(Color.WHITE);
 	}
 
+	//Toggle cell colors
 	public void mouseEntered(MouseEvent me)
 	{
 		setBackground(Color.GRAY);
 		day.setForeground(Color.WHITE);
 	}
 
+	//Toggle cell colors
 	public void mouseExited(MouseEvent me)
 	{
 		if(!today)

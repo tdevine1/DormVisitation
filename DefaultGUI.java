@@ -1,6 +1,10 @@
 /* * * * * * * * * * *\
- * DefaultGUI
- * Description: The dfault GUI
+ * DefaultGUI.java
+ * Description: This is the GUI for resident assistants and dorm monitors, there are three main features on this side of the
+ *				system including checking in/checking out guests, adding lock outs, and viewing history. Lockout and history
+ *				features are password protected. History can be viewed by resident assistants as far as a week in the past and
+ *				dorm monitors can view history for the current day.
+ *
  * Date: 4/4/16
  * @author Brandon Ballard & Hanif Mirza
 \* * * * * * * * * * */
@@ -18,23 +22,6 @@ import java.text.SimpleDateFormat;
 
 class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener, MouseListener, DocumentListener
 {
-	public static void main(String[] x)
-	{
-		try
-		{
-			Class.forName( "com.mysql.jdbc.Driver" );
-			Connection connection = DriverManager.getConnection( "jdbc:mysql://localhost/dorm", "root", "password");// Brandon's Server
-			//Connection connection = DriverManager.getConnection( "jdbc:mysql://localhost/falcon16_dorm", "root", "root");// Hanif's Server
-
-			Statement statement = connection.createStatement();
-			new DefaultGUI(statement,"ra2016","password","RA");
-		}
-		catch ( Exception e )
-		{
-			System.out.println( "Exception "+e.getMessage() );
-		}
-	}
-
 	JButton 					addGuestButton, checkOutButton, lockOutButton, historyButton, logOutButton, editButton;
 	public JLabel 				seperate, seperate1, seperate2, seperate3, titleLabel;
 	JPanel 						buttonPanel, statusPanel, sidePanel, southPanel;
@@ -56,6 +43,7 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 	JLabel 						searchLabel, filterLabel;
 	JTextField 					filterTextField;
 
+	//BY BRANDON BALLARD, sets up and adds components
     DefaultGUI(Statement statement, String userID,String password,String accountType)
     {
 		this.statement = statement;
@@ -63,7 +51,7 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 		this.password = password;
 		this.accountType = accountType;
 
-		df = new SimpleDateFormat("MM/dd/yyyy");
+		df = new SimpleDateFormat("M/d/yyyy");
 
 		titleLabel = new JLabel("Welcome to Bryant Place - " + df.format(new Date()));
 		titleLabel.setForeground(Color.WHITE);
@@ -203,14 +191,7 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 		}
 		catch ( SQLException sqlException )
 		{
-			if (sqlException.getMessage().startsWith("Communications") )
-			{
-				JOptionPane.showMessageDialog(this, "No internet connection! Please try again later!");
-			}
-			else
-			{
-				JOptionPane.showMessageDialog(this, sqlException.getMessage());
-			}
+			JOptionPane.showMessageDialog(this, sqlException.getMessage());
 		}
 		catch ( Exception exception )
 		{
@@ -218,13 +199,15 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 		}
     }
 
+	/* Written by Hanif Mirza. This function will populate the resident hashtable. In the hashtable, room number is the key
+	   and Resident object is the value.*/
     void populateResidentHashtable() throws Exception
     {
 		ResultSet myResultSet1, myResultSet2;
 		String roomNo, residentID, residentName, SQL_Query1, SQL_Query2;
 
 		SQL_Query1 = " Select r.room_number,r.userID,CONCAT(r.first_name,\" \",r.last_name) as 'fullname'"+ " From Resident r";
-		myResultSet1 = statement.executeQuery(SQL_Query1);
+		myResultSet1 = statement.executeQuery(SQL_Query1);	// get all residents information
 
 		while ( myResultSet1.next() )
 		{
@@ -234,11 +217,15 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 
 			if ( residentHT.containsKey(roomNo) )
 			{
+				// if the key (room number) already exists then get the resident object from using the key
 				Resident myResident = residentHT.get(roomNo);
+
+				// map residentID and residentName to the residentHashtable of Resident object (in the same room number)
 				myResident.residentHashtable.put(residentID,residentName);
 			}
 			else
 			{
+				// the key (room number) doesn't exist, so create new Resident object and map it with room number
 				Resident myResident = new Resident();
 				myResident.residentHashtable.put(residentID,residentName);
 				residentHT.put(roomNo, myResident );
@@ -248,11 +235,14 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 
 		SQL_Query2 = " Select CONCAT(e.first_name,\" \",e.last_name) as 'Fullname'"+ " From Employee e"+ " Where e.userID = " + "'"+userID+"'" ;
 
-		myResultSet2 = statement.executeQuery(SQL_Query2);
+		myResultSet2 = statement.executeQuery(SQL_Query2);	// get RA or DM's full name
 		myResultSet2.first();
 		myFullName = myResultSet2.getString(1);
 		myResultSet2.close();
 	}
+
+	// Written by Hanif Mirza. When the RA or DM logged in, this function will create a table with all the
+	// visitation details that aren't checked out yet and show that table on the frame.
 
 	void constructJTable()throws Exception
 	{
@@ -262,14 +252,14 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 		Vector<Object> columnNames, rows, currentRow;
 
 		String SQL_Query  =     " Select v.visitationID as 'Serial No',v.guest_name as 'Guest',v.guest_age as 'Guest Age',v.guest_ID_type as 'ID Type',CONCAT(r.first_name,\" \",r.last_name) as 'Resident',"
-								+ " r.room_number as 'Room Number', DATE_FORMAT(v.visitation_date,'%m/%d/%Y') as 'Date', TIME_FORMAT(v.time_in, '%h:%i%p')as 'Time in',"
+								+ " r.room_number as 'Room Number', DATE_FORMAT(v.visitation_date,'%c/%e/%Y') as 'Date', TIME_FORMAT(v.time_in, '%l:%i%p')as 'Time in',"
 								+ " v.overnight_status as 'Overnight', CONCAT(e.first_name,\" \",e.last_name) as 'DM/RA Name' "
 
 								+ " From Visitation_Detail v, Resident r,Employee e"
 								+ " Where v.time_out is null and v.residentID = r.userID and v.empID = e.userID ;" ;
 
 		myResultSet = statement.executeQuery(SQL_Query);
-		table = new MyTable( myResultSet );
+		table = new MyTable( myResultSet );	// Create a table from ResultSet
 		tableModel = (DefaultTableModel)table.getModel();
 		table.addMouseListener(this);
 		table.getSelectionModel().addListSelectionListener(this);
@@ -296,6 +286,7 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 		repaint();
 	}
 
+	//BY BRANDON BALLARD, handles action events
     public void actionPerformed(ActionEvent e)
     {
         if(e.getActionCommand().equals("NEW_GUEST"))
@@ -330,13 +321,14 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 		}
     }
 
+	// Written by Hanif Mirza. This function will check out a guest when DM clicks the Check Out button
     void doCheckOut()
     {
 		try
 		{
 			int[] selectionList = table.getSelectedRows();
 			int row = table.convertRowIndexToModel(selectionList[0]);
-			String visitationID = tableModel.getValueAt( row,0 ).toString();
+			String visitationID = tableModel.getValueAt( row,0 ).toString(); // get the visitationID, which is the key
 
 			String updateKeyQuery = "UPDATE Visitation_Detail"
 								 + " SET time_out = curtime()"
@@ -349,14 +341,7 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 		}
 		catch ( SQLException sqlException )
 		{
-			if (sqlException.getMessage().startsWith("Communications") )
-			{
-				JOptionPane.showMessageDialog(this, "No internet connection! Please try again later!");
-			}
-			else
-			{
-				JOptionPane.showMessageDialog(this, sqlException.getMessage());
-			}
+			JOptionPane.showMessageDialog(this, sqlException.getMessage());
 		}
 		catch ( Exception exception )
 		{
@@ -394,6 +379,7 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 		}
 	}
 
+	// Written by Hanif Mirza. This function will view the visitation history
 	void viewHistory()
 	{
 		try
@@ -404,7 +390,7 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 			{
 				// DM can see the history of last 24 hours
 				SQL_Query =   " Select v.visitationID as 'Serial No',v.guest_name as 'Guest Name',v.guest_ID_type as 'ID Type',CONCAT(r.first_name,\" \",r.last_name) as 'Resident Name',"
-							+ " r.room_number as 'Room Number', DATE_FORMAT(v.visitation_date,'%m/%d/%Y') as 'Date',TIME_FORMAT(v.time_in, '%h:%i%p')as 'Time in',TIME_FORMAT(v.time_out, '%h:%i%p')as 'Time out',"
+							+ " r.room_number as 'Room Number', DATE_FORMAT(v.visitation_date,'%c/%e/%Y') as 'Date',TIME_FORMAT(v.time_in, '%l:%i%p')as 'Time in',TIME_FORMAT(v.time_out, '%l:%i%p')as 'Time out',"
 							+ " v.overnight_status as 'Overnight', CONCAT(e.first_name,\" \",e.last_name) as 'DM/RA Name' "
 
 							+ " From Visitation_Detail v, Resident r,Employee e"
@@ -414,7 +400,7 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 			{
 				// RA can see the history of last week
 				SQL_Query =   " Select v.visitationID as 'Serial No',v.guest_name as 'Guest Name',v.guest_ID_type as 'ID Type',CONCAT(r.first_name,\" \",r.last_name) as 'Resident Name',"
-							+ " r.room_number as 'Room Number', DATE_FORMAT(v.visitation_date,'%m/%d/%Y') as 'Date',TIME_FORMAT(v.time_in, '%h:%i%p')as 'Time in',TIME_FORMAT(v.time_out, '%h:%i%p')as 'Time out',"
+							+ " r.room_number as 'Room Number', DATE_FORMAT(v.visitation_date,'%c/%e/%Y') as 'Date',TIME_FORMAT(v.time_in, '%l:%i%p')as 'Time in',TIME_FORMAT(v.time_out, '%l:%i%p')as 'Time out',"
 							+ " v.overnight_status as 'Overnight', CONCAT(e.first_name,\" \",e.last_name) as 'DM/RA Name' "
 
 							+ " From Visitation_Detail v, Resident r,Employee e"
@@ -422,7 +408,11 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 			}
 
 			remove(scrollPane);
-			historyTable = new MyTable(statement.executeQuery(SQL_Query));
+			historyTable = new MyTable(statement.executeQuery(SQL_Query)); // construct the historyTable using the result set
+			historyTable.getColumnModel().getColumn(0).setMinWidth(0); //Hide the first column
+			historyTable.getColumnModel().getColumn(0).setMaxWidth(0);
+			historyTable.getColumnModel().getColumn(0).setWidth(0);
+
 			searchLabel.setVisible(true);
 			titleLabel.setText("Showing history as of " + df.format(new Date()));
 
@@ -442,14 +432,7 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 		}
 		catch ( SQLException sqlException )
 		{
-			if (sqlException.getMessage().startsWith("Communications")	)
-			{
-				JOptionPane.showMessageDialog(this, "No internet connection! Please try again later!");
-			}
-			else
-			{
-				JOptionPane.showMessageDialog(this, sqlException.getMessage());
-			}
+			JOptionPane.showMessageDialog(this, sqlException.getMessage());
 		}
 		catch ( Exception exception )
 		{
@@ -457,6 +440,7 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 		}
 	}
 
+	// Written by Hanif Mirza. This function will perform the log out. It will store their log out time to the database
 	void doLogout()
 	{
 		try
@@ -531,7 +515,7 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 			}
 			else
 			{
-				historyTable.rowSorter.setRowFilter(RowFilter.regexFilter("(?i)" + text));
+				historyTable.rowSorter.setRowFilter(RowFilter.regexFilter("(?i)" + text)); // sort the historyTable using key word from filterTextField
 			}
 		}
 		catch ( Exception ee )
@@ -551,7 +535,7 @@ class DefaultGUI extends JFrame implements ActionListener, ListSelectionListener
 			}
 			else
 			{
-				historyTable.rowSorter.setRowFilter(RowFilter.regexFilter("(?i)" + text));
+				historyTable.rowSorter.setRowFilter(RowFilter.regexFilter("(?i)" + text)); // sort the historyTable using key word from filterTextField
 			}
 		}
 		catch ( Exception ee )
